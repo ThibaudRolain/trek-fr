@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(winget install:*)",
+      "Bash(winget list:*)",
+      "Bash(dotnet:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(ng:*)",
+      "Bash(node:*)",
+      "Bash(git:*)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "Bash(ls:*)",
+      "Bash(pwd)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(echo:*)",
+      "Edit(C:\\Users\\bertr\\Dev\\trek-fr\\**)",
+      "Write(C:\\Users\\bertr\\Dev\\trek-fr\\**)",
+      "PowerShell(dotnet:*)",
+      "PowerShell(npm:*)",
+      "PowerShell(npx:*)",
+      "PowerShell(ng:*)",
+      "PowerShell(node:*)",
+      "PowerShell(git:*)",
+      "PowerShell(docker:*)",
+      "PowerShell(winget:*)",
+      "PowerShell(Get-ChildItem:*)",
+      "PowerShell(Set-Location:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "PowerShell(Remove-Item -Recurse -Force C:\\*)"
+    ]
+  }
+}
