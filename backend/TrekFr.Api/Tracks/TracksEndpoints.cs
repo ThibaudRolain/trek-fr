@@ -65,6 +65,13 @@ public static class TracksEndpoints
         {
             return Results.BadRequest(new { error = ex.Message });
         }
+        catch (NotYetImplementedException ex)
+        {
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status501NotImplemented,
+                title: "Fonctionnalité à venir");
+        }
         catch (OpenRouteServiceException ex)
         {
             return Results.Problem(
@@ -99,7 +106,8 @@ public static class TracksEndpoints
     {
         if (request.EndLatitude is not { } endLat || request.EndLongitude is not { } endLon)
         {
-            throw new BadRequestException("endLatitude and endLongitude are required in A→B mode");
+            throw new NotYetImplementedException(
+                "La proposition automatique de destination arrive dans une prochaine slice. Pose une arrivée manuellement pour l'instant.");
         }
         if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
         {
@@ -112,6 +120,8 @@ public static class TracksEndpoints
             request.Profile,
             ct);
     }
+
+    private sealed class NotYetImplementedException(string message) : System.Exception(message);
 
     private sealed class BadRequestException(string message) : System.Exception(message);
 }

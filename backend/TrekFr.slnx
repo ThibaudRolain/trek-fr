@@ -3,4 +3,5 @@
   <Project Path="TrekFr.Core/TrekFr.Core.csproj" />
   <Project Path="TrekFr.Data/TrekFr.Data.csproj" />
   <Project Path="TrekFr.Infrastructure/TrekFr.Infrastructure.csproj" />
+  <Project Path="tools/BuildCommunes/BuildCommunes.csproj" />
 </Solution>

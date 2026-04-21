@@ -58,7 +58,12 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
                 <span class="font-mono text-slate-100">{{ p.lat.toFixed(5) }}, {{ p.lon.toFixed(5) }}</span>
               </div>
             } @else if (startPoint()) {
-              <p class="text-slate-400">Clique à nouveau pour poser l'arrivée.</p>
+              <p class="text-slate-400">
+                Arrivée (optionnelle) — clique à nouveau pour la poser.
+                <span class="block text-slate-500">
+                  La proposition automatique arrive bientôt.
+                </span>
+              </p>
             } @else {
               <p class="text-slate-500">Arrivée : pose le départ d'abord.</p>
             }
@@ -151,7 +156,6 @@ export class TrackGenerateComponent {
 
   readonly canSubmit = computed(() => {
     if (this.loading() || this.startPoint() === null) return false;
-    if (this.mode() === 'aToB' && this.endPoint() === null) return false;
     return true;
   });
 
@@ -180,10 +184,6 @@ export class TrackGenerateComponent {
     }
 
     const end = this.endPoint();
-    if (mode === 'aToB' && !end) {
-      this.error.set("Pose aussi le point d'arrivée sur la carte.");
-      return;
-    }
 
     this.error.set(null);
     this.loading.set(true);
@@ -195,8 +195,8 @@ export class TrackGenerateComponent {
         profile: this.profile,
         seed: mode === 'roundTrip' ? (this.seed ?? undefined) : undefined,
         mode,
-        endLatitude: mode === 'aToB' ? end!.lat : undefined,
-        endLongitude: mode === 'aToB' ? end!.lon : undefined,
+        endLatitude: mode === 'aToB' && end ? end.lat : undefined,
+        endLongitude: mode === 'aToB' && end ? end.lon : undefined,
       })
       .subscribe({
         next: (res) => {
