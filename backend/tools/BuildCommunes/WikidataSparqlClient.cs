@@ -57,7 +57,7 @@ public sealed class WikidataSparqlClient(HttpClient http)
         return rows;
     }
 
-    public static string StripWikidataUri(string uri)
+    internal static string StripWikidataUri(string uri)
     {
         var slash = uri.LastIndexOf('/');
         return slash < 0 ? uri : uri[(slash + 1)..].TrimEnd('>');

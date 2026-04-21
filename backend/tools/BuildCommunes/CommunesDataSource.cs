@@ -17,10 +17,10 @@ public sealed class CommunesDataSource(WikidataSparqlClient sparql)
         Console.WriteLine($"  → {labels.Count} labels resolved");
 
         var result = new List<CommuneRaw>(idsCoordsPop.Count);
-        foreach (var (wdId, lat, lon, pop) in idsCoordsPop)
+        foreach (var (wdId, lat, lon, pop, insee) in idsCoordsPop)
         {
             if (!labels.TryGetValue(wdId, out var name)) continue;
-            result.Add(new CommuneRaw(wdId, name, lat, lon, pop));
+            result.Add(new CommuneRaw(wdId, name, lat, lon, pop, insee));
         }
         return result;
     }
@@ -28,11 +28,11 @@ public sealed class CommunesDataSource(WikidataSparqlClient sparql)
     public async Task<Dictionary<string, int>> FetchHeritageCountsAsync(CancellationToken ct = default)
     {
         // Count per-commune locally from a flat list of (heritage item, commune) pairs filtered to France.
-        const string query = """
+        var query = $$"""
             SELECT ?commune WHERE {
-              ?mh wdt:P17 wd:Q142 .
-              ?mh wdt:P1435 ?designation .
-              ?mh wdt:P131 ?commune .
+              ?mh {{WikidataIds.PropCountry}} {{WikidataIds.France}} .
+              ?mh {{WikidataIds.PropHeritageDesignation}} ?designation .
+              ?mh {{WikidataIds.PropLocatedIn}} ?commune .
             }
             """;
         try
@@ -60,47 +60,29 @@ public sealed class CommunesDataSource(WikidataSparqlClient sparql)
         var query = $$"""
             SELECT DISTINCT ?commune WHERE {
               ?org rdfs:label "{{escaped}}"@fr .
-              { ?commune wdt:P463 ?org . }
-              UNION { ?commune wdt:P1435 ?org . }
-              UNION { ?commune wdt:P166 ?org . }
-              ?commune wdt:P31 wd:Q484170 .
+              { ?commune {{WikidataIds.PropMemberOf}} ?org . }
+              UNION { ?commune {{WikidataIds.PropHeritageDesignation}} ?org . }
+              UNION { ?commune {{WikidataIds.PropAwardReceived}} ?org . }
+              ?commune {{WikidataIds.PropInstanceOf}} {{WikidataIds.CommuneOfFrance}} .
             }
             """;
         return await FetchCommuneIdSetAsync(query, ct);
     }
 
-    public async Task<HashSet<string>> FetchCommunesMatchingOrgSubstringsAsync(
-        IReadOnlyList<string> mustContain,
-        CancellationToken ct = default)
-    {
-        var filters = string.Join(" && ",
-            mustContain.Select(s => $"CONTAINS(LCASE(STR(?orgLabel)), LCASE(\"{s.Replace("\"", "\\\"")}\"))"));
-        var query = $$"""
-            SELECT DISTINCT ?commune WHERE {
-              ?org rdfs:label ?orgLabel .
-              FILTER(LANG(?orgLabel) = "fr")
-              FILTER({{filters}})
-              { ?commune wdt:P463 ?org . }
-              UNION { ?commune wdt:P1435 ?org . }
-              UNION { ?commune wdt:P166 ?org . }
-              ?commune wdt:P31 wd:Q484170 .
-            }
-            """;
-        return await FetchCommuneIdSetAsync(query, ct);
-    }
-
-    private async Task<List<(string wdId, double lat, double lon, int? pop)>> FetchCommuneIdsAsync(CancellationToken ct)
+    private async Task<List<(string wdId, double lat, double lon, int? pop, string? insee)>> FetchCommuneIdsAsync(CancellationToken ct)
     {
         // Paginated to avoid Wikidata's 60s timeout on scans of all 35k communes.
-        var all = new List<(string, double, double, int?)>();
+        // P374 = INSEE municipality code (used to match against Base Mérimée CSV).
+        var all = new List<(string, double, double, int?, string?)>();
         int offset = 0;
         while (true)
         {
             var query = $$"""
-                SELECT ?commune ?coord ?pop WHERE {
-                  ?commune wdt:P31 wd:Q484170 ;
-                           wdt:P625 ?coord .
-                  OPTIONAL { ?commune wdt:P1082 ?pop . }
+                SELECT ?commune ?coord ?pop ?insee WHERE {
+                  ?commune {{WikidataIds.PropInstanceOf}} {{WikidataIds.CommuneOfFrance}} ;
+                           {{WikidataIds.PropCoordinateLocation}} ?coord .
+                  OPTIONAL { ?commune {{WikidataIds.PropPopulation}} ?pop . }
+                  OPTIONAL { ?commune {{WikidataIds.PropInseeCode}} ?insee . }
                 }
                 ORDER BY ?commune
                 LIMIT {{CommunesPageSize}}
@@ -120,7 +102,8 @@ public sealed class CommunesDataSource(WikidataSparqlClient sparql)
                 {
                     pop = (int)Math.Round(popD);
                 }
-                all.Add((wdId, lat, lon, pop));
+                row.TryGetValue("insee", out var insee);
+                all.Add((wdId, lat, lon, pop, insee));
             }
             if (rows.Count < CommunesPageSize) break;
             offset += CommunesPageSize;

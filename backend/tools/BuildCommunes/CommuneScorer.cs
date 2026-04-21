@@ -2,26 +2,25 @@ namespace TrekFr.Tools.BuildCommunes;
 
 public sealed class CommuneScorer(int populationThreshold)
 {
-    public List<CommuneEntry> Score(
-        IReadOnlyList<CommuneRaw> communes,
-        IReadOnlyDictionary<string, int> heritageCounts,
-        IReadOnlySet<string> plusBeauxVillages,
-        IReadOnlySet<string> villesArtHistoire)
+    private const double MonumentHistoriqueWeight = 10d;
+    private const double PlusBeauVillageBonus = 50d;
+    private const double VilleArtHistoireBonus = 30d;
+
+    public List<CommuneEntry> Score(IReadOnlyList<CommuneRaw> communes, HeritageSignals signals)
     {
         var result = new List<CommuneEntry>(communes.Count);
         foreach (var c in communes)
         {
-            if (c.Population is < 0 or null) continue;
-            if (c.Population < populationThreshold) continue;
+            if (c.Population is null || c.Population < populationThreshold) continue;
 
-            heritageCounts.TryGetValue(c.WikidataId, out var mh);
-            var isPbv = plusBeauxVillages.Contains(c.WikidataId);
-            var isVah = villesArtHistoire.Contains(c.WikidataId);
+            var mh = ResolveHeritageCount(c, signals);
+            var isPbv = signals.PlusBeauxVillages.Contains(c.WikidataId);
+            var isVah = signals.VillesArtHistoire.Contains(c.WikidataId);
 
-            var score = 10d * mh
-                        + (isPbv ? 50d : 0d)
-                        + (isVah ? 30d : 0d)
-                        + (c.Population > 0 ? Math.Log(c.Population.Value) : 0d);
+            var score = MonumentHistoriqueWeight * mh
+                        + (isPbv ? PlusBeauVillageBonus : 0d)
+                        + (isVah ? VilleArtHistoireBonus : 0d)
+                        + Math.Log(c.Population.Value);
 
             result.Add(new CommuneEntry(
                 c.Name,
@@ -35,5 +34,16 @@ public sealed class CommuneScorer(int populationThreshold)
         }
         result.Sort((a, b) => b.Score.CompareTo(a.Score));
         return result;
+    }
+
+    private static int ResolveHeritageCount(CommuneRaw c, HeritageSignals signals)
+    {
+        // Prefer Mérimée (authoritative for France) when the commune has an INSEE match.
+        if (signals.MerimeeCountsByInsee is not null && c.InseeCode is not null &&
+            signals.MerimeeCountsByInsee.TryGetValue(c.InseeCode, out var merimee))
+        {
+            return merimee;
+        }
+        return signals.WikidataHeritageCounts.TryGetValue(c.WikidataId, out var wdMh) ? wdMh : 0;
     }
 }

@@ -18,16 +18,29 @@ internal static class Program
         using var http = BuildHttpClient();
         var sparql = new WikidataSparqlClient(http);
         var source = new CommunesDataSource(sparql);
+        var merimee = new MerimeeDataSource(http);
         var scorer = new CommuneScorer(PopulationThreshold);
 
-        Console.WriteLine("Fetching communes (IDs, coords, pop, then labels)...");
+        Console.WriteLine("Fetching communes (IDs, coords, pop, INSEE, then labels)...");
         var communes = await source.FetchCommunesAsync();
         Console.WriteLine($"  → {communes.Count} communes");
 
         await Task.Delay(BetweenStagesMs);
-        Console.WriteLine("Fetching heritage items in France...");
+        Console.WriteLine("Fetching heritage items in France (Wikidata, fallback if Mérimée fails)...");
         var heritage = await source.FetchHeritageCountsAsync();
-        Console.WriteLine($"  → heritage data on {heritage.Count} communes");
+        Console.WriteLine($"  → Wikidata heritage data on {heritage.Count} communes");
+
+        await Task.Delay(BetweenStagesMs);
+        Console.WriteLine("Fetching Base Mérimée (data.culture.gouv.fr)...");
+        var merimeeCounts = await merimee.TryFetchCountsByInseeAsync();
+        if (merimeeCounts is not null)
+        {
+            Console.WriteLine($"  → Mérimée counts on {merimeeCounts.Count} communes (will override Wikidata for score)");
+        }
+        else
+        {
+            Console.WriteLine("  → Mérimée unreachable, falling back to Wikidata heritage counts");
+        }
 
         await Task.Delay(BetweenStagesMs);
         Console.WriteLine("Fetching 'Plus beaux villages de France'...");
@@ -36,11 +49,14 @@ internal static class Program
 
         await Task.Delay(BetweenStagesMs);
         Console.WriteLine("Fetching 'Villes et Pays d'art et d'histoire'...");
-        var vah = await source.FetchCommunesMatchingOrgSubstringsAsync(["art et d", "histoire"]);
+        // Known limitation: the direct label→entity link finds ~8 communes ; the SPARQL discovery
+        // approach times out (504) on Wikidata public endpoint. Fix deferred.
+        var vah = await source.FetchCommunesMatchingOrgLabelAsync("Villes et Pays d'art et d'histoire");
         Console.WriteLine($"  → {vah.Count} communes labelled");
 
         Console.WriteLine("Scoring and filtering...");
-        var scored = scorer.Score(communes, heritage, pbv, vah);
+        var signals = new HeritageSignals(heritage, merimeeCounts, pbv, vah);
+        var scored = scorer.Score(communes, signals);
         Console.WriteLine($"Kept {scored.Count} communes (pop ≥ {PopulationThreshold}).");
 
         await WriteOutputAsync(scored, repoRoot);

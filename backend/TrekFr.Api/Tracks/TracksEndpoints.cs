@@ -52,25 +52,32 @@ public static class TracksEndpoints
             return Results.BadRequest(new { error = "invalid start coordinates" });
         }
 
+        var validation = request.Mode switch
+        {
+            TrackGenerationMode.AToB => ValidateAToB(request),
+            TrackGenerationMode.RoundTrip => ValidateRoundTrip(request),
+            _ => Results.BadRequest(new { error = "unknown mode" }),
+        };
+        if (validation is not null) return validation;
+
         try
         {
-            GeneratedTrack generated = request.Mode switch
+            var generated = request.Mode switch
             {
-                TrackGenerationMode.AToB => await ExecuteAToB(request, aToB, ct),
-                _ => await ExecuteRoundTrip(request, roundTrip, ct),
+                TrackGenerationMode.AToB => await aToB.ExecuteAsync(
+                    new Coordinate(request.Latitude, request.Longitude),
+                    new Coordinate(request.EndLatitude!.Value, request.EndLongitude!.Value),
+                    request.Profile,
+                    ct),
+                TrackGenerationMode.RoundTrip => await roundTrip.ExecuteAsync(
+                    new Coordinate(request.Latitude, request.Longitude),
+                    request.DistanceKm * 1000d,
+                    request.Profile,
+                    request.Seed,
+                    ct),
+                _ => throw new System.InvalidOperationException("Unreachable — mode was validated above."),
             };
             return Results.Ok(TrackResponse.From(generated));
-        }
-        catch (BadRequestException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
-        catch (NotYetImplementedException ex)
-        {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status501NotImplemented,
-                title: "Fonctionnalité à venir");
         }
         catch (OpenRouteServiceException ex)
         {
@@ -81,47 +88,30 @@ public static class TracksEndpoints
         }
     }
 
-    private static Task<GeneratedTrack> ExecuteRoundTrip(
-        TrackGenerateRequest request,
-        GenerateRoundTrip useCase,
-        CancellationToken ct)
+    private static IResult? ValidateRoundTrip(TrackGenerateRequest request)
     {
-        if (request.DistanceKm <= 0 || request.DistanceKm > 100)
+        if (request.DistanceKm is <= 0 or > 100)
         {
-            throw new BadRequestException("distance must be between 0 and 100 km (ORS round-trip limit)");
+            return Results.BadRequest(new { error = "distance must be between 0 and 100 km (ORS round-trip limit)" });
         }
-
-        return useCase.ExecuteAsync(
-            new Coordinate(request.Latitude, request.Longitude),
-            request.DistanceKm * 1000d,
-            request.Profile,
-            request.Seed,
-            ct);
+        return null;
     }
 
-    private static Task<GeneratedTrack> ExecuteAToB(
-        TrackGenerateRequest request,
-        RouteAToB useCase,
-        CancellationToken ct)
+    private static IResult? ValidateAToB(TrackGenerateRequest request)
     {
         if (request.EndLatitude is not { } endLat || request.EndLongitude is not { } endLon)
         {
-            throw new NotYetImplementedException(
-                "La proposition automatique de destination arrive dans une prochaine slice. Pose une arrivée manuellement pour l'instant.");
+            // ProposeDestination (Phase B) fills this in; for now return 501 so the UI can show
+            // an accurate "pose une arrivée manuellement" hint instead of a validation error.
+            return Results.Problem(
+                detail: "La proposition automatique de destination arrive dans une prochaine slice. Pose une arrivée manuellement pour l'instant.",
+                statusCode: StatusCodes.Status501NotImplemented,
+                title: "Fonctionnalité à venir");
         }
         if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
         {
-            throw new BadRequestException("invalid end coordinates");
+            return Results.BadRequest(new { error = "invalid end coordinates" });
         }
-
-        return useCase.ExecuteAsync(
-            new Coordinate(request.Latitude, request.Longitude),
-            new Coordinate(endLat, endLon),
-            request.Profile,
-            ct);
+        return null;
     }
-
-    private sealed class NotYetImplementedException(string message) : System.Exception(message);
-
-    private sealed class BadRequestException(string message) : System.Exception(message);
 }
