@@ -118,6 +118,7 @@ public static class TracksEndpoints
         try
         {
             var start = new Coordinate(request.Latitude, request.Longitude);
+            var filter = new ElevationFilter(request.MinElevationGainMeters, request.MaxElevationGainMeters);
 
             Track track;
             TrackStats stats;
@@ -128,19 +129,19 @@ public static class TracksEndpoints
                 case TrackGenerationMode.AToB
                     when request.EndLatitude is { } endLat && request.EndLongitude is { } endLon:
                 {
-                    var r = await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, ct);
+                    var r = await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, filter, ct);
                     (track, stats) = (r.Track, r.Stats);
                     break;
                 }
                 case TrackGenerationMode.AToB:
                 {
-                    var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct);
+                    var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
                     (track, stats, proposedName) = (r.Track, r.Stats, r.Destination.Name);
                     break;
                 }
                 case TrackGenerationMode.RoundTrip:
                 {
-                    var r = await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct);
+                    var r = await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
                     (track, stats) = (r.Track, r.Stats);
                     break;
                 }
@@ -175,6 +176,18 @@ public static class TracksEndpoints
         {
             return Results.BadRequest(new { error = ex.Message });
         }
+        catch (ElevationOutOfRangeException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (DistanceMismatchException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (NonRoutablePointException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
         catch (OpenRouteServiceException ex)
         {
             return UpstreamBadGateway(ex, "OpenRouteService error");
@@ -195,16 +208,20 @@ public static class TracksEndpoints
 
     private static IResult? ValidateAToB(TrackGenerateRequest request)
     {
-        if (request.DistanceKm is <= 0 or > 200)
+        bool hasEndPoint = request.EndLatitude is not null && request.EndLongitude is not null;
+
+        if (hasEndPoint)
         {
-            return Results.BadRequest(new { error = "distance must be between 1 and 200 km" });
-        }
-        if (request.EndLatitude is { } endLat && request.EndLongitude is { } endLon)
-        {
-            if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
+            if (request.EndLatitude is < -90 or > 90 || request.EndLongitude is < -180 or > 180)
             {
                 return Results.BadRequest(new { error = "invalid end coordinates" });
             }
+            return null;
+        }
+
+        if (request.DistanceKm is <= 0 or > 200)
+        {
+            return Results.BadRequest(new { error = "distance must be between 1 and 200 km" });
         }
         return null;
     }

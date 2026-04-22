@@ -13,6 +13,9 @@ function makeTrack(coordinates: [number, number][]): TrackResponse {
     geojson: { type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: {} },
     bbox: null,
     proposedDestinationName: null,
+    stages: null,
+    warnings: null,
+    seed: null,
   };
 }
 

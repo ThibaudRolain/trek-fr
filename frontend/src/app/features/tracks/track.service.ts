@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import type {
   GenerateTrackRequest,
   PointWeather,
@@ -8,7 +9,7 @@ import type {
   WeatherRequest,
 } from './track.models';
 
-const API_BASE = '';
+const API_BASE = environment.apiBase;
 
 @Injectable({ providedIn: 'root' })
 export class TrackService {
@@ -27,6 +28,8 @@ export class TrackService {
       splitStages: request.splitStages ?? false,
       stageDistanceKm: request.stageDistanceKm ?? null,
       stageElevationGain: request.stageElevationGain ?? null,
+      minElevationGainMeters: request.minElevationGainMeters ?? null,
+      maxElevationGainMeters: request.maxElevationGainMeters ?? null,
     });
   }
 

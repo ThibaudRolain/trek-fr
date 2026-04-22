@@ -71,26 +71,26 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
         }
       </div>
 
-      <label class="flex flex-col gap-1 text-xs">
-        <span class="text-slate-400">
-          Distance cible (km)
-          @if (mode() === 'aToB') {
-            <span class="text-slate-500">— indicative en A→B</span>
-          } @else {
-            <span class="text-slate-500">— max 100</span>
-          }
-        </span>
-        <input
-          type="number"
-          min="1"
-          max="100"
-          step="1"
-          [(ngModel)]="distanceKm"
-          name="distanceKm"
-          class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
-          [disabled]="loading()"
-        />
-      </label>
+      @if (showDistanceInput()) {
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="text-slate-400">
+            Distance cible (km)
+            @if (mode() === 'roundTrip') {
+              <span class="text-slate-500">— max 100</span>
+            }
+          </span>
+          <input
+            type="number"
+            min="1"
+            max="200"
+            step="1"
+            [(ngModel)]="distanceKm"
+            name="distanceKm"
+            class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+            [disabled]="loading()"
+          />
+        </label>
+      }
 
       <label class="flex flex-col gap-1 text-xs">
         <span class="text-slate-400">Profil</span>
@@ -106,19 +106,41 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
         </select>
       </label>
 
-      @if (mode() === 'roundTrip') {
-        <label class="flex flex-col gap-1 text-xs">
-          <span class="text-slate-400">Seed (optionnel, pour varier)</span>
-          <input
-            type="number"
-            [(ngModel)]="seed"
-            name="seed"
-            placeholder="aléatoire"
-            class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
-            [disabled]="loading()"
-          />
-        </label>
-      }
+      <details class="text-xs">
+        <summary class="cursor-pointer text-slate-400 hover:text-slate-200">Filtre dénivelé (optionnel)</summary>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label class="flex flex-col gap-1">
+            <span class="text-slate-500">D+ min (m)</span>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              [(ngModel)]="minElevationGainMeters"
+              name="minElevationGainMeters"
+              placeholder="—"
+              class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+              [disabled]="loading()"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-slate-500">D+ max (m)</span>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              [(ngModel)]="maxElevationGainMeters"
+              name="maxElevationGainMeters"
+              placeholder="—"
+              class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+              [disabled]="loading()"
+            />
+          </label>
+        </div>
+        <p class="mt-1 text-slate-500">
+          Tolérance élastique ±15 % autour de la plage que tu saisis
+          (atteindre un D+ pile est rare). Si rien ne rentre, on t'avertit.
+        </p>
+      </details>
 
       <div class="rounded border border-slate-800 bg-slate-900/60 p-2 text-xs">
         <label class="flex items-center gap-2">
@@ -164,6 +186,7 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
         }
       </div>
 
+
       <button
         type="submit"
         [disabled]="!canSubmit()"
@@ -184,6 +207,15 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
           class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:text-slate-500"
         >
           Autre proposition
+        </button>
+      } @else if (canProposeAnotherVariant()) {
+        <button
+          type="button"
+          (click)="submit($event)"
+          [disabled]="loading()"
+          class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:text-slate-500"
+        >
+          Autre variante
         </button>
       }
 
@@ -209,6 +241,8 @@ export class TrackGenerateComponent {
   splitStages = false;
   stageDistanceKm = 22;
   stageElevationGain = 1000;
+  minElevationGainMeters: number | null = null;
+  maxElevationGainMeters: number | null = null;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -218,10 +252,23 @@ export class TrackGenerateComponent {
     return true;
   });
 
+  /** A→B + destination proposée par le backend → "Autre proposition" (cycle top 5). */
   readonly canProposeAnother = computed(() =>
     this.mode() === 'aToB' &&
     this.endPoint() === null &&
     this.track()?.proposedDestinationName != null
+  );
+
+  /** Round-trip ou A→B explicite déjà généré → "Autre variante" (nouveau seed). */
+  readonly canProposeAnotherVariant = computed(() =>
+    this.track() !== null &&
+    !this.canProposeAnother() &&
+    this.mode() === 'roundTrip'
+  );
+
+  /** Distance cible ignorée en A→B explicite (route déterministe) — on cache le champ. */
+  readonly showDistanceInput = computed(() =>
+    !(this.mode() === 'aToB' && this.endPoint() !== null)
   );
 
   setMode(mode: TrackMode): void {
@@ -268,13 +315,17 @@ export class TrackGenerateComponent {
         longitude: start.lon,
         distanceKm: this.distanceKm,
         profile: this.profile,
-        seed: mode === 'roundTrip' ? (this.seed ?? undefined) : undefined,
+        // seed toujours undefined ici ; le backend en génère un et le renvoie,
+        // l'utilisateur peut "Régénérer cette variante" plus tard depuis une trace sauvée.
+        seed: undefined,
         mode,
         endLatitude: mode === 'aToB' && end ? end.lat : undefined,
         endLongitude: mode === 'aToB' && end ? end.lon : undefined,
         splitStages: this.splitStages,
         stageDistanceKm: this.splitStages ? this.stageDistanceKm : undefined,
         stageElevationGain: this.splitStages ? this.stageElevationGain : undefined,
+        minElevationGainMeters: this.minElevationGainMeters ?? undefined,
+        maxElevationGainMeters: this.maxElevationGainMeters ?? undefined,
       })
       .subscribe({
         next: (res) => {

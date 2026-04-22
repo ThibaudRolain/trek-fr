@@ -44,6 +44,7 @@ export interface TrackResponse {
   proposedDestinationName: string | null;
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
+  seed: number | null;
 }
 
 export interface LatLon {
@@ -63,6 +64,8 @@ export interface GenerateTrackRequest {
   splitStages?: boolean;
   stageDistanceKm?: number;
   stageElevationGain?: number;
+  minElevationGainMeters?: number;
+  maxElevationGainMeters?: number;
 }
 
 export interface WeatherPointInput {

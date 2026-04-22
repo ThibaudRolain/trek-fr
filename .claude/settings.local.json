@@ -3,7 +3,20 @@
     "allow": [
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
-      "Bash(tasklist //FI \"IMAGENAME eq dotnet.exe\")"
+      "Bash(tasklist //FI \"IMAGENAME eq dotnet.exe\")",
+      "Bash(taskkill *)",
+      "Bash(netstat -aon)",
+      "Bash(curl -s -o /dev/null -w \"api=%{http_code}\\\\n\" --max-time 2 http://localhost:5179/health)",
+      "Bash(curl -s -o /dev/null -w \"front=%{http_code}\\\\n\" --max-time 2 http://localhost:4200/)",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\",\"maxElevationGainMeters\":300}')",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"aToB\",\"endLatitude\":46.24698,\"endLongitude\":2.61827,\"maxElevationGainMeters\":100}')",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\"}')",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\",\"maxElevationGainMeters\":650,\"seed\":42}')",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\",\"minElevationGainMeters\":200,\"maxElevationGainMeters\":500}')",
+      "Bash(cmd //c start powershell -NoExit -WorkingDirectory \"C:/Users/bertr/dev/trek-fr-deploy\")",
+      "Bash(cmd //c start powershell -NoExit -WorkingDirectory \"C:/Users/bertr/dev/trek-fr-qa\")",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":45.5089697,\"longitude\":6.3842536,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"aToB\",\"endLatitude\":45.52,\"endLongitude\":6.39}')",
+      "Bash(curl *)"
     ]
   }
 }

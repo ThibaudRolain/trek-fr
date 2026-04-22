@@ -1,5 +1,6 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
+import { SavedTracksService } from './saved-tracks.service';
 
 @Component({
   selector: 'app-track-stats-panel',
@@ -54,6 +55,11 @@ import type { StageDto, TrackResponse, TrackStats, WarningDto } from './track.mo
               }
             }
           </div>
+        }
+        @if (t.seed !== null) {
+          <p class="mb-2 text-xs text-slate-500">
+            Variante #<span class="font-mono text-slate-400">{{ t.seed }}</span>
+          </p>
         }
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <dt class="text-slate-400">Distance</dt>
@@ -135,13 +141,27 @@ import type { StageDto, TrackResponse, TrackStats, WarningDto } from './track.mo
             </ul>
           </div>
         }
+        <button
+          type="button"
+          (click)="saveTrack(t)"
+          [disabled]="justSaved()"
+          class="mt-3 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 hover:border-emerald-500 hover:text-emerald-400 disabled:cursor-not-allowed disabled:text-slate-500"
+        >
+          @if (justSaved()) {
+            Sauvegardée ✓
+          } @else {
+            Sauver cette trace
+          }
+        </button>
       </div>
     }
   `,
 })
 export class TrackStatsPanelComponent {
+  private readonly saved = inject(SavedTracksService);
   readonly track = input<TrackResponse | null>(null);
   readonly stageFocus = output<[number, number, number, number]>();
+  readonly justSaved = signal(false);
 
   readonly stages = computed(() => this.track()?.stages ?? null);
 
@@ -175,7 +195,6 @@ export class TrackStatsPanelComponent {
   hasLodgingLinks(stage: StageDto): boolean {
     const spot = stage.endSleepSpot;
     if (spot.kind === 'town' || spot.kind === 'refuge') return true;
-    // Arrival has a meaningful name only when it came from a proposed destination.
     return spot.kind === 'arrival' && spot.name !== 'Arrivée';
   }
 
@@ -193,5 +212,16 @@ export class TrackStatsPanelComponent {
 
   formatKmFromMeters(meters: number): string {
     return (meters / 1000).toFixed(1);
+  }
+
+  saveTrack(track: TrackResponse): void {
+    const suggested = track.proposedDestinationName
+      ?? track.name
+      ?? `Trace ${(track.stats.distanceMeters / 1000).toFixed(0)} km`;
+    const name = window.prompt('Nom de la trace', suggested);
+    if (name === null) return;
+    this.saved.save(track, name);
+    this.justSaved.set(true);
+    setTimeout(() => this.justSaved.set(false), 2000);
   }
 }
