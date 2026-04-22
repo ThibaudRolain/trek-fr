@@ -68,6 +68,10 @@ builder.Services.AddScoped<GetWeatherForPoints>();
 
 var app = builder.Build();
 
+// Charge le dataset communes au démarrage plutôt que sur la première requête :
+// la première /tracks/generate ou /tracks/weather paierait sinon ~500 ms de JSON parse.
+_ = app.Services.GetRequiredService<CommuneDataset>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

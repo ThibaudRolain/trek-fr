@@ -52,33 +52,7 @@ public sealed class OpenRouteServiceRouter(
         };
         msg.Headers.TryAddWithoutValidation("Authorization", _options.ApiKey);
 
-        using var response = await http.SendAsync(msg, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync(ct);
-            throw new OpenRouteServiceException(
-                $"ORS round_trip failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
-        }
-
-        var payload = await response.Content.ReadFromJsonAsync<OrsGeoJsonResponse>(JsonOptions, ct)
-                      ?? throw new OpenRouteServiceException("ORS returned empty payload.");
-
-        var feature = payload.Features is { Count: > 0 }
-            ? payload.Features[0]
-            : throw new OpenRouteServiceException("ORS response has no feature.");
-
-        var coords = feature.Geometry?.Coordinates
-            ?? throw new OpenRouteServiceException("ORS feature has no coordinates.");
-
-        var points = new List<Coordinate>(coords.Count);
-        foreach (var c in coords)
-        {
-            if (c.Count < 2) continue;
-            double? elevation = c.Count >= 3 ? c[2] : null;
-            points.Add(new Coordinate(c[1], c[0], elevation));
-        }
-
-        return new Track(points, profile);
+        return await SendAndParseAsync(msg, profile, "round_trip", ct);
     }
 
     public async Task<Track> RouteAsync(
@@ -104,12 +78,18 @@ public sealed class OpenRouteServiceRouter(
         };
         msg.Headers.TryAddWithoutValidation("Authorization", _options.ApiKey);
 
+        return await SendAndParseAsync(msg, profile, "point-to-point", ct);
+    }
+
+    private async Task<Track> SendAndParseAsync(
+        HttpRequestMessage msg, Profile profile, string operation, CancellationToken ct)
+    {
         using var response = await http.SendAsync(msg, ct);
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync(ct);
             throw new OpenRouteServiceException(
-                $"ORS point-to-point failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
+                $"ORS {operation} failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
         }
 
         var payload = await response.Content.ReadFromJsonAsync<OrsGeoJsonResponse>(JsonOptions, ct)
@@ -129,7 +109,6 @@ public sealed class OpenRouteServiceRouter(
             double? elevation = c.Count >= 3 ? c[2] : null;
             points.Add(new Coordinate(c[1], c[0], elevation));
         }
-
         return new Track(points, profile);
     }
 

@@ -29,7 +29,7 @@ public sealed class CommunesDestinationProposer(CommuneDataset dataset) : IDesti
         var max = targetDistanceMeters * (1 + DistanceTolerance);
 
         var candidates = dataset.Entries
-            .Select(c => (commune: c, distance: CommuneDataset.Haversine(start.Latitude, start.Longitude, c.Lat, c.Lon)))
+            .Select(c => (commune: c, distance: Geo.HaversineMeters(start.Latitude, start.Longitude, c.Lat, c.Lon)))
             .Where(x => x.distance >= min && x.distance <= max)
             .OrderByDescending(x => x.commune.Score)
             .Take(TopCandidates)
