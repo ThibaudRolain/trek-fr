@@ -3,8 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
   GenerateTrackRequest,
+  PointWeather,
   TrackProfile,
   TrackResponse,
+  WeatherRequest,
 } from './track.models';
 
 const API_BASE = '';
@@ -33,6 +35,14 @@ export class TrackService {
       splitStages: request.splitStages ?? false,
       stageDistanceKm: request.stageDistanceKm ?? null,
       stageElevationGain: request.stageElevationGain ?? null,
+    });
+  }
+
+  getWeather(request: WeatherRequest): Observable<PointWeather[]> {
+    return this.http.post<PointWeather[]>(`${API_BASE}/tracks/weather`, {
+      points: request.points,
+      startDate: request.startDate ?? null,
+      days: request.days ?? 7,
     });
   }
 }

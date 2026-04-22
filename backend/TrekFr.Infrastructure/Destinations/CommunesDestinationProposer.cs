@@ -1,19 +1,19 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TrekFr.Core.Abstractions;
 using TrekFr.Core.Domain;
+using TrekFr.Infrastructure.Communes;
 
 namespace TrekFr.Infrastructure.Destinations;
 
 /// <summary>
-/// Propose une ville d'arrivée à partir du dataset bundled de communes françaises.
-/// Filtre par distance crow-fly avec tolérance fixe, ranke par score patrimonial,
-/// tire aléatoirement dans le top 5.
+/// Propose une ville d'arrivée à partir du dataset partagé `CommuneDataset`. Filtre par
+/// distance crow-fly avec tolérance fixe, ranke par score patrimonial, tire aléatoirement
+/// dans le top 5.
 /// </summary>
-public sealed class CommunesDestinationProposer(CommunesDataset dataset) : IDestinationProposer
+public sealed class CommunesDestinationProposer(CommuneDataset dataset) : IDestinationProposer
 {
     private const double DistanceTolerance = 0.10;
     private const int TopCandidates = 5;
@@ -28,8 +28,8 @@ public sealed class CommunesDestinationProposer(CommunesDataset dataset) : IDest
         var min = targetDistanceMeters * (1 - DistanceTolerance);
         var max = targetDistanceMeters * (1 + DistanceTolerance);
 
-        var candidates = dataset.Communes
-            .Select(c => (commune: c, distance: Haversine(start.Latitude, start.Longitude, c.Lat, c.Lon)))
+        var candidates = dataset.Entries
+            .Select(c => (commune: c, distance: CommuneDataset.Haversine(start.Latitude, start.Longitude, c.Lat, c.Lon)))
             .Where(x => x.distance >= min && x.distance <= max)
             .OrderByDescending(x => x.commune.Score)
             .Take(TopCandidates)
@@ -47,17 +47,4 @@ public sealed class CommunesDestinationProposer(CommunesDataset dataset) : IDest
                 new Coordinate(picked.Lat, picked.Lon),
                 picked.Population));
     }
-
-    private static double Haversine(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double earthRadiusMeters = 6_371_000d;
-        var dLat = DegToRad(lat2 - lat1);
-        var dLon = DegToRad(lon2 - lon1);
-        var sinLat = Math.Sin(dLat / 2);
-        var sinLon = Math.Sin(dLon / 2);
-        var a = sinLat * sinLat + Math.Cos(DegToRad(lat1)) * Math.Cos(DegToRad(lat2)) * sinLon * sinLon;
-        return 2 * earthRadiusMeters * Math.Asin(Math.Min(1, Math.Sqrt(a)));
-    }
-
-    private static double DegToRad(double deg) => deg * Math.PI / 180d;
 }

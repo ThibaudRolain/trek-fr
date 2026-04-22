@@ -2,10 +2,12 @@ using System.Text.Json.Serialization;
 using TrekFr.Api.Tracks;
 using TrekFr.Core.Abstractions;
 using TrekFr.Core.UseCases;
+using TrekFr.Infrastructure.Communes;
 using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.Gpx;
 using TrekFr.Infrastructure.OpenRouteService;
 using TrekFr.Infrastructure.Stages;
+using TrekFr.Infrastructure.Weather;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,7 +48,19 @@ builder.Services.AddHttpClient<IRoutingProvider, OpenRouteServiceRouter>((sp, cl
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-builder.Services.AddSingleton<CommunesDataset>();
+builder.Services
+    .AddOptions<OpenMeteoOptions>()
+    .Bind(builder.Configuration.GetSection(OpenMeteoOptions.SectionName));
+
+builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherProvider>((sp, client) =>
+{
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenMeteoOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddSingleton<CommuneDataset>();
+builder.Services.AddSingleton<INearestCommuneFinder>(sp => sp.GetRequiredService<CommuneDataset>());
 builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
 builder.Services.AddSingleton<IRefugeProvider, NullRefugeProvider>();
 builder.Services.AddSingleton<CommunesTownProvider>();
@@ -55,6 +69,7 @@ builder.Services.AddScoped<GenerateRoundTrip>();
 builder.Services.AddScoped<RouteAToB>();
 builder.Services.AddScoped<ProposeDestination>();
 builder.Services.AddScoped<SplitIntoStages>();
+builder.Services.AddScoped<GetWeatherForPoints>();
 
 var app = builder.Build();
 

@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TrekFr.Core.Abstractions;
 using TrekFr.Core.Domain;
-using TrekFr.Infrastructure.Destinations;
+using TrekFr.Infrastructure.Communes;
 
 namespace TrekFr.Infrastructure.Stages;
 
@@ -12,7 +12,7 @@ namespace TrekFr.Infrastructure.Stages;
 /// Source "Town" pour le découpage en étapes : les communes du dataset bundled (pop ≥ 200)
 /// dont le point le plus proche de la trace est à ≤ bufferMeters.
 /// </summary>
-public sealed class CommunesTownProvider(CommunesDataset dataset)
+public sealed class CommunesTownProvider(CommuneDataset dataset)
 {
     private const double MetersPerDegreeLatitude = 111_000d;
 
@@ -35,7 +35,7 @@ public sealed class CommunesTownProvider(CommunesDataset dataset)
         var bboxMaxLon = maxLon + dLon;
 
         var result = new List<SleepSpotCandidate>();
-        foreach (var c in dataset.Communes)
+        foreach (var c in dataset.Entries)
         {
             if (c.Lat < bboxMinLat || c.Lat > bboxMaxLat) continue;
             if (c.Lon < bboxMinLon || c.Lon > bboxMaxLon) continue;

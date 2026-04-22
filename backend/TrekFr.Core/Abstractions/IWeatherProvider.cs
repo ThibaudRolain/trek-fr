@@ -10,14 +10,17 @@ public interface IWeatherProvider
 {
     Task<IReadOnlyList<WeatherSample>> GetForecastAsync(
         IReadOnlyList<Coordinate> points,
-        DateOnly date,
+        DateOnly startDate,
+        int days,
         CancellationToken ct = default);
 }
 
 public sealed record WeatherSample(
     Coordinate At,
     DateTimeOffset When,
-    double TemperatureCelsius,
+    double TemperatureMinCelsius,
+    double TemperatureMaxCelsius,
     double PrecipitationMm,
     double WindKmh,
+    int WmoCode,
     string Summary);
