@@ -11,17 +11,40 @@ public sealed record TrackResponse(
     TrackStatsDto Stats,
     object Geojson,
     double[]? Bbox,
-    string? ProposedDestinationName)
+    string? ProposedDestinationName,
+    IReadOnlyList<StageDto>? Stages)
 {
-    public static TrackResponse From(Track track, TrackStats stats, string? proposedDestinationName = null)
+    public static TrackResponse From(
+        Track track,
+        TrackStats stats,
+        string? proposedDestinationName = null,
+        IReadOnlyList<Stage>? stages = null)
     {
-        var coords = track.Points
+        var profile = track.Profile.ToString().ToLowerInvariant();
+        return new TrackResponse(
+            track.Name,
+            profile,
+            TrackStatsDto.From(stats),
+            BuildLineStringFeature(track.Points, track.Name, profile),
+            ComputeBbox(track.Points),
+            proposedDestinationName,
+            stages?.Select(s => StageDto.From(s, profile)).ToList());
+    }
+
+    public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
+    public static TrackResponse From(GeneratedTrack generated) => From(generated.Track, generated.Stats);
+    public static TrackResponse From(ProposedGeneratedTrack proposed) =>
+        From(proposed.Track, proposed.Stats, proposed.Destination.Name);
+
+    internal static object BuildLineStringFeature(IReadOnlyList<Coordinate> points, string? name, string profile)
+    {
+        var coords = points
             .Select(p => p.Elevation is { } e
                 ? new[] { p.Longitude, p.Latitude, e }
                 : new[] { p.Longitude, p.Latitude })
             .ToArray();
 
-        var geojson = new
+        return new
         {
             type = "Feature",
             geometry = new
@@ -31,26 +54,13 @@ public sealed record TrackResponse(
             },
             properties = new Dictionary<string, object?>
             {
-                ["name"] = track.Name,
-                ["profile"] = track.Profile.ToString().ToLowerInvariant(),
+                ["name"] = name,
+                ["profile"] = profile,
             },
         };
-
-        return new TrackResponse(
-            track.Name,
-            track.Profile.ToString().ToLowerInvariant(),
-            TrackStatsDto.From(stats),
-            geojson,
-            ComputeBbox(track.Points),
-            proposedDestinationName);
     }
 
-    public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
-    public static TrackResponse From(GeneratedTrack generated) => From(generated.Track, generated.Stats);
-    public static TrackResponse From(ProposedGeneratedTrack proposed) =>
-        From(proposed.Track, proposed.Stats, proposed.Destination.Name);
-
-    private static double[]? ComputeBbox(IReadOnlyList<Coordinate> points)
+    internal static double[]? ComputeBbox(IReadOnlyList<Coordinate> points)
     {
         if (points.Count == 0) return null;
         var minLat = double.PositiveInfinity;
@@ -79,4 +89,31 @@ public sealed record TrackStatsDto(
         s.ElevationGainMeters,
         s.ElevationLossMeters,
         s.EstimatedDuration.TotalSeconds);
+}
+
+public sealed record StageDto(
+    int Index,
+    TrackStatsDto Stats,
+    object Geojson,
+    double[]? Bbox,
+    SleepSpotDto EndSleepSpot,
+    double? OffTrackDistanceMeters)
+{
+    public static StageDto From(Stage stage, string profile) => new(
+        stage.Index,
+        TrackStatsDto.From(stage.Stats),
+        TrackResponse.BuildLineStringFeature(stage.Points, name: null, profile),
+        TrackResponse.ComputeBbox(stage.Points),
+        SleepSpotDto.From(stage.EndSleepSpot),
+        stage.OffTrackDistanceMeters);
+}
+
+public sealed record SleepSpotDto(
+    string Name,
+    double Latitude,
+    double Longitude,
+    SleepSpotKind Kind)
+{
+    public static SleepSpotDto From(SleepSpot s) =>
+        new(s.Name, s.Location.Latitude, s.Location.Longitude, s.Kind);
 }
