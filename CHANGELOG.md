@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-22
 
+### Added — Première mise en prod (feature/deploy)
+
+Dockerisation backend (.NET 10 SDK→ASP.NET 10) + frontend (node→nginx:alpine SPA fallback), `docker-compose.prod.yml` 4 services (postgis + backend + frontend + caddy), reverse proxy Caddy avec TLS Let's Encrypt automatique via sslip.io. Déploiement live sur VPS Hetzner CAX11 (~€4/mois) — front https://178-104-47-96.sslip.io, API https://api.178-104-47-96.sslip.io. CORS prod via env var `ALLOWED_ORIGINS`, `UseHttpsRedirection` conditionné au dev. Config Fly.io conservée en alternative (bascule Hetzner décidée en cours de route — fin du free tier Fly).
+
+**Doc détaillée** : [`docs/merges/2026-04-22-feature-deploy.md`](docs/merges/2026-04-22-feature-deploy.md) • **Merge** : `b4a112e`
+
 ### Added — Quick-wins round-trip (feature/quick-wins)
 
 Round-trip retries 5 → 10, 400 actionnables (`NonRoutablePointException` + `DistanceMismatchException` avec meilleure distance trouvée et suggestion), validation distance ±20 %. Filtre dénivelé D+ min/max (tolérance élastique ±15 %) sur générateur et proposer (top-5 itération). Seed renvoyé dans la réponse (UX "Autre variante"). localStorage des traces sauvegardées (MVP). Skill `/restart` projet-local worktree-aware, `environment.ts` auto-regéré.
