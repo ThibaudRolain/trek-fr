@@ -6,6 +6,7 @@ using TrekFr.Infrastructure.Communes;
 using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.Gpx;
 using TrekFr.Infrastructure.OpenRouteService;
+using TrekFr.Infrastructure.Weather;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,17 @@ builder.Services.AddHttpClient<IRoutingProvider, OpenRouteServiceRouter>((sp, cl
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenRouteServiceOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+builder.Services
+    .AddOptions<OpenMeteoOptions>()
+    .Bind(builder.Configuration.GetSection(OpenMeteoOptions.SectionName));
+
+builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherProvider>((sp, client) =>
+{
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenMeteoOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
 });
 
 builder.Services.AddSingleton<CommuneDataset>();
