@@ -68,8 +68,10 @@ public sealed class SplitIntoStages(ISleepSpotProvider spotProvider)
                 throw new NoStageSleepSpotException(
                     stageIndex,
                     approxKm,
-                    $"Aucun hébergement trouvé autour de l'étape {stageIndex} (~{approxKm:F0} km du départ). " +
-                    "Augmente km/jour, D+/jour, ou élargis le buffer off-track.");
+                    $"Pas de commune à ≤ 2 km de la trace autour de l'étape {stageIndex} " +
+                    $"(~{approxKm:F0} km du départ). L'app ne consulte pas Airbnb / Booking / " +
+                    "Abritel — pour élargir les candidats, augmente km/jour ou D+/jour, ou " +
+                    "cherche directement sur ces plateformes sur la zone.");
             }
 
             stages.Add(BuildStage(track, stageIndex, fromIndex, pick));
