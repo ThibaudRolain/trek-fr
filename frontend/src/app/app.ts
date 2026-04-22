@@ -16,8 +16,10 @@ export class App {
   readonly startPoint = signal<LatLon | null>(null);
   readonly endPoint = signal<LatLon | null>(null);
   readonly mode = signal<TrackMode>('roundTrip');
+  readonly focusBbox = signal<[number, number, number, number] | null>(null);
 
   onMapClick(point: LatLon): void {
+    this.focusBbox.set(null);
     if (this.mode() === 'roundTrip') {
       this.startPoint.set(point);
       this.endPoint.set(null);
@@ -40,6 +42,11 @@ export class App {
   }
 
   onTrackReady(track: TrackResponse): void {
+    this.focusBbox.set(null);
     this.track.set(track);
+  }
+
+  onStageFocus(bbox: [number, number, number, number]): void {
+    this.focusBbox.set(bbox);
   }
 }

@@ -17,7 +17,8 @@ import {
   Marker,
   StyleSpecification,
 } from 'maplibre-gl';
-import type { LatLon, TrackResponse } from '../tracks/track.models';
+import type { FeatureCollection, Feature, LineString, Point } from 'geojson';
+import type { LatLon, StageDto, TrackResponse } from '../tracks/track.models';
 
 const IGN_STYLE: StyleSpecification = {
   version: 8,
@@ -43,6 +44,18 @@ const IGN_STYLE: StyleSpecification = {
 
 const TRACK_SOURCE_ID = 'track';
 const TRACK_LAYER_ID = 'track-line';
+const STAGES_SOURCE_ID = 'stages';
+const STAGES_LAYER_ID = 'stages-line';
+const STAGE_ENDS_SOURCE_ID = 'stage-ends';
+const STAGE_ENDS_CIRCLE_LAYER_ID = 'stage-ends-circle';
+const STAGE_ENDS_LABEL_LAYER_ID = 'stage-ends-label';
+
+const STAGE_COLOR_EXPR = [
+  'match',
+  ['%', ['get', 'stageIndex'], 2],
+  1, '#10b981',
+  '#0ea5e9',
+] as const;
 
 @Component({
   selector: 'app-map',
@@ -65,6 +78,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   readonly track = input<TrackResponse | null>(null);
   readonly startPoint = input<LatLon | null>(null);
   readonly endPoint = input<LatLon | null>(null);
+  readonly focusBbox = input<[number, number, number, number] | null>(null);
   readonly mapClick = output<LatLon>();
 
   private map?: MapLibreMap;
@@ -72,8 +86,6 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private endMarker?: Marker;
   private readonly ready = signal(false);
 
-  // When the backend proposes an arrival (propose-destination flow) the trace's last
-  // coord is the arrival city — pin it automatically even if the user hasn't clicked one.
   private readonly proposedEndFromTrack = computed<LatLon | null>(() => {
     const t = this.track();
     if (!t?.proposedDestinationName) return null;
@@ -99,6 +111,15 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       const proposed = this.proposedEndFromTrack();
       if (!this.map) return;
       this.endMarker = this.renderMarker(this.endMarker, explicit ?? proposed, '#ef4444');
+    });
+    effect(() => {
+      const bbox = this.focusBbox();
+      if (!this.ready() || !this.map || !bbox) return;
+      const [minLon, minLat, maxLon, maxLat] = bbox;
+      this.map.fitBounds(
+        [[minLon, minLat], [maxLon, maxLat]] as LngLatBoundsLike,
+        { padding: 80, duration: 600 },
+      );
     });
   }
 
@@ -130,40 +151,141 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   }
 
   private renderTrack(track: TrackResponse | null): void {
-    const map = this.map!;
-    const existing = map.getSource(TRACK_SOURCE_ID) as GeoJSONSource | undefined;
-
     if (!track) {
-      if (map.getLayer(TRACK_LAYER_ID)) map.removeLayer(TRACK_LAYER_ID);
-      if (existing) map.removeSource(TRACK_SOURCE_ID);
+      this.removeSingleTrackLayer();
+      this.removeStageLayers();
       return;
     }
 
-    if (existing) {
-      existing.setData(track.geojson);
+    if (track.stages && track.stages.length > 0) {
+      this.removeSingleTrackLayer();
+      this.renderStages(track.stages);
     } else {
-      map.addSource(TRACK_SOURCE_ID, { type: 'geojson', data: track.geojson });
+      this.removeStageLayers();
+      this.renderSingleTrack(track.geojson);
+    }
+
+    if (track.bbox) {
+      const [minLon, minLat, maxLon, maxLat] = track.bbox;
+      this.map!.fitBounds(
+        [[minLon, minLat], [maxLon, maxLat]] as LngLatBoundsLike,
+        { padding: 60, duration: 600 },
+      );
+    }
+  }
+
+  private renderSingleTrack(geojson: Feature<LineString>): void {
+    const map = this.map!;
+    const existing = map.getSource(TRACK_SOURCE_ID) as GeoJSONSource | undefined;
+    if (existing) {
+      existing.setData(geojson);
+      return;
+    }
+    map.addSource(TRACK_SOURCE_ID, { type: 'geojson', data: geojson });
+    map.addLayer({
+      id: TRACK_LAYER_ID,
+      type: 'line',
+      source: TRACK_SOURCE_ID,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#10b981',
+        'line-width': 4,
+        'line-opacity': 0.9,
+      },
+    });
+  }
+
+  private renderStages(stages: readonly StageDto[]): void {
+    const map = this.map!;
+
+    const lineFC: FeatureCollection<LineString> = {
+      type: 'FeatureCollection',
+      features: stages.map((s) => ({
+        type: 'Feature',
+        geometry: s.geojson.geometry,
+        properties: { stageIndex: s.index },
+      })),
+    };
+
+    const existingLines = map.getSource(STAGES_SOURCE_ID) as GeoJSONSource | undefined;
+    if (existingLines) {
+      existingLines.setData(lineFC);
+    } else {
+      map.addSource(STAGES_SOURCE_ID, { type: 'geojson', data: lineFC });
       map.addLayer({
-        id: TRACK_LAYER_ID,
+        id: STAGES_LAYER_ID,
         type: 'line',
-        source: TRACK_SOURCE_ID,
+        source: STAGES_SOURCE_ID,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': '#10b981',
+          'line-color': STAGE_COLOR_EXPR as unknown as string,
           'line-width': 4,
           'line-opacity': 0.9,
         },
       });
     }
 
-    if (track.bbox) {
-      const [minLon, minLat, maxLon, maxLat] = track.bbox;
-      const bounds: LngLatBoundsLike = [
-        [minLon, minLat],
-        [maxLon, maxLat],
-      ];
-      map.fitBounds(bounds, { padding: 60, duration: 600 });
+    // Intermediate sleep spots only — the final Arrival is already marked by the red end marker.
+    const endsFC: FeatureCollection<Point> = {
+      type: 'FeatureCollection',
+      features: stages
+        .filter((s) => s.endSleepSpot.kind !== 'arrival')
+        .map<Feature<Point>>((s) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [s.endSleepSpot.longitude, s.endSleepSpot.latitude],
+          },
+          properties: { stageIndex: s.index, label: String(s.index) },
+        })),
+    };
+
+    const existingEnds = map.getSource(STAGE_ENDS_SOURCE_ID) as GeoJSONSource | undefined;
+    if (existingEnds) {
+      existingEnds.setData(endsFC);
+    } else {
+      map.addSource(STAGE_ENDS_SOURCE_ID, { type: 'geojson', data: endsFC });
+      map.addLayer({
+        id: STAGE_ENDS_CIRCLE_LAYER_ID,
+        type: 'circle',
+        source: STAGE_ENDS_SOURCE_ID,
+        paint: {
+          'circle-radius': 10,
+          'circle-color': STAGE_COLOR_EXPR as unknown as string,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#0f172a',
+        },
+      });
+      map.addLayer({
+        id: STAGE_ENDS_LABEL_LAYER_ID,
+        type: 'symbol',
+        source: STAGE_ENDS_SOURCE_ID,
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-size': 11,
+          'text-font': ['Noto Sans Bold'],
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': '#0f172a',
+        },
+      });
     }
+  }
+
+  private removeSingleTrackLayer(): void {
+    const map = this.map!;
+    if (map.getLayer(TRACK_LAYER_ID)) map.removeLayer(TRACK_LAYER_ID);
+    if (map.getSource(TRACK_SOURCE_ID)) map.removeSource(TRACK_SOURCE_ID);
+  }
+
+  private removeStageLayers(): void {
+    const map = this.map!;
+    if (map.getLayer(STAGE_ENDS_LABEL_LAYER_ID)) map.removeLayer(STAGE_ENDS_LABEL_LAYER_ID);
+    if (map.getLayer(STAGE_ENDS_CIRCLE_LAYER_ID)) map.removeLayer(STAGE_ENDS_CIRCLE_LAYER_ID);
+    if (map.getSource(STAGE_ENDS_SOURCE_ID)) map.removeSource(STAGE_ENDS_SOURCE_ID);
+    if (map.getLayer(STAGES_LAYER_ID)) map.removeLayer(STAGES_LAYER_ID);
+    if (map.getSource(STAGES_SOURCE_ID)) map.removeSource(STAGES_SOURCE_ID);
   }
 
   private renderMarker(

@@ -15,6 +15,7 @@
       [track]="track()"
       [startPoint]="startPoint()"
       [endPoint]="endPoint()"
+      [focusBbox]="focusBbox()"
       (mapClick)="onMapClick($event)"
     ></app-map>
 
@@ -30,7 +31,10 @@
         ></app-track-generate>
       </div>
       <div class="pointer-events-auto">
-        <app-track-stats-panel [track]="track()"></app-track-stats-panel>
+        <app-track-stats-panel
+          [track]="track()"
+          (stageFocus)="onStageFocus($event)"
+        ></app-track-stats-panel>
       </div>
     </aside>
   </main>

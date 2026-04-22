@@ -120,6 +120,50 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
         </label>
       }
 
+      <div class="rounded border border-slate-800 bg-slate-900/60 p-2 text-xs">
+        <label class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            [(ngModel)]="splitStages"
+            name="splitStages"
+            class="h-3 w-3 accent-emerald-500"
+            [disabled]="loading()"
+          />
+          <span class="text-slate-300">Découper en étapes</span>
+        </label>
+
+        @if (splitStages) {
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <label class="flex flex-col gap-1">
+              <span class="text-slate-400">km / jour</span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                [(ngModel)]="stageDistanceKm"
+                name="stageDistanceKm"
+                class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+                [disabled]="loading()"
+              />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-slate-400">D+ / jour (m)</span>
+              <input
+                type="number"
+                min="1"
+                max="10000"
+                step="50"
+                [(ngModel)]="stageElevationGain"
+                name="stageElevationGain"
+                class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+                [disabled]="loading()"
+              />
+            </label>
+          </div>
+        }
+      </div>
+
       <button
         type="submit"
         [disabled]="!canSubmit()"
@@ -162,6 +206,9 @@ export class TrackGenerateComponent {
   distanceKm = 15;
   profile: TrackProfile = 'foot';
   seed: number | null = null;
+  splitStages = false;
+  stageDistanceKm = 22;
+  stageElevationGain = 1000;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -200,6 +247,16 @@ export class TrackGenerateComponent {
       this.error.set('La distance doit être entre 1 et 100 km.');
       return;
     }
+    if (this.splitStages) {
+      if (this.stageDistanceKm <= 0 || this.stageDistanceKm > 100) {
+        this.error.set('km / jour doit être entre 1 et 100.');
+        return;
+      }
+      if (this.stageElevationGain <= 0 || this.stageElevationGain > 10000) {
+        this.error.set('D+ / jour doit être entre 1 et 10000 m.');
+        return;
+      }
+    }
 
     const end = this.endPoint();
 
@@ -215,6 +272,9 @@ export class TrackGenerateComponent {
         mode,
         endLatitude: mode === 'aToB' && end ? end.lat : undefined,
         endLongitude: mode === 'aToB' && end ? end.lon : undefined,
+        splitStages: this.splitStages,
+        stageDistanceKm: this.splitStages ? this.stageDistanceKm : undefined,
+        stageElevationGain: this.splitStages ? this.stageElevationGain : undefined,
       })
       .subscribe({
         next: (res) => {

@@ -30,6 +30,9 @@ export class TrackService {
       mode: request.mode,
       endLatitude: request.endLatitude ?? null,
       endLongitude: request.endLongitude ?? null,
+      splitStages: request.splitStages ?? false,
+      stageDistanceKm: request.stageDistanceKm ?? null,
+      stageElevationGain: request.stageElevationGain ?? null,
     });
   }
 }
