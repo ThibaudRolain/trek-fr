@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using TrekFr.Api.Tracks;
 using TrekFr.Core.Abstractions;
 using TrekFr.Core.UseCases;
+using TrekFr.Infrastructure.Communes;
 using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.Gpx;
 using TrekFr.Infrastructure.OpenRouteService;
@@ -45,6 +46,8 @@ builder.Services.AddHttpClient<IRoutingProvider, OpenRouteServiceRouter>((sp, cl
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddSingleton<CommuneDataset>();
+builder.Services.AddSingleton<INearestCommuneFinder>(sp => sp.GetRequiredService<CommuneDataset>());
 builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
 builder.Services.AddScoped<GenerateRoundTrip>();
 builder.Services.AddScoped<RouteAToB>();
