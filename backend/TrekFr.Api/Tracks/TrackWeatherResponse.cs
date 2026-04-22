@@ -30,12 +30,29 @@ public sealed record WeatherDayDto(
     int WmoCode,
     string Summary)
 {
-    public static WeatherDayDto From(WeatherSample s) => new(
-        DateOnly.FromDateTime(s.When.Date),
-        Math.Round(s.TemperatureMinCelsius, 1),
-        Math.Round(s.TemperatureMaxCelsius, 1),
-        Math.Round(s.PrecipitationMm, 1),
-        Math.Round(s.WindKmh, 1),
-        s.WmoCode,
-        s.Summary);
+    // Seuil en dessous duquel un code "pluie" (non-orage, non-neige) est rendu comme "Couvert"
+    // pour éviter d'annoncer "pluie légère" à 0.3 mm/jour. Orages et neige toujours rendus.
+    private const double RainThresholdMm = 1d;
+
+    public static WeatherDayDto From(WeatherSample s)
+    {
+        var wmoCode = s.WmoCode;
+        var summary = s.Summary;
+        if (IsLightPrecipRainCode(wmoCode) && s.PrecipitationMm < RainThresholdMm)
+        {
+            wmoCode = 3;
+            summary = "Couvert";
+        }
+        return new WeatherDayDto(
+            DateOnly.FromDateTime(s.When.Date),
+            Math.Round(s.TemperatureMinCelsius, 1),
+            Math.Round(s.TemperatureMaxCelsius, 1),
+            Math.Round(s.PrecipitationMm, 1),
+            Math.Round(s.WindKmh, 1),
+            wmoCode,
+            summary);
+    }
+
+    private static bool IsLightPrecipRainCode(int code) =>
+        code is (>= 51 and <= 67) or (>= 80 and <= 82);
 }

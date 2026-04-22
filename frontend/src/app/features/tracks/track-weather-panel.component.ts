@@ -41,6 +41,14 @@ function dayLabel(dateIso: string): string {
                   <span class="chev inline-block text-slate-500 transition-transform">▸</span>
                   <span class="text-xs uppercase tracking-wide text-slate-400">{{ p.label }}</span>
                   <span class="font-medium text-slate-100">{{ p.communeName ?? '—' }}</span>
+                  <a
+                    [href]="windyUrl(p.latitude, p.longitude)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    (click)="$event.stopPropagation()"
+                    class="text-slate-500 hover:text-sky-300"
+                    title="Voir sur Windy"
+                  >↗</a>
                 </span>
                 @if (p.forecast.length > 0) {
                   <span class="flex items-center gap-2 text-xs">
@@ -75,4 +83,7 @@ export class TrackWeatherPanelComponent {
   emoji(code: number): string { return emojiForWmo(code); }
   weekday(iso: string): string { return weekdayLabel(iso); }
   dayOfMonth(iso: string): string { return dayLabel(iso); }
+  windyUrl(lat: number, lon: number): string {
+    return `https://www.windy.com/?${lat.toFixed(4)},${lon.toFixed(4)},10`;
+  }
 }
