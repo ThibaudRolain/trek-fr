@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-22
 
+### Added — Découpage en étapes (feature/multi-stage)
+
+Toggle "Découper en étapes" + inputs km/jour et D+/jour côté front ; domain pur `SplitIntoStages` (pivot + scoring patrimoine, refuges prioritaires) ; providers `CommunesTownProvider` / `NullRefugeProvider` / `CompositeSleepSpotProvider` ; endpoint `/tracks/generate` étendu avec `SplitStages` + `StageDto[]` ; `NoStageSleepSpot` rendu en warning ancré sur la commune la plus proche (hors 2 km) + liens Airbnb / Booking / Abritel pré-remplis ; extension météo automatique sur chaque sleep spot.
+
+**Doc détaillée** : [`docs/merges/2026-04-22-multi-stage.md`](docs/merges/2026-04-22-multi-stage.md) • **Merge** : `637aa48`
+
 ### Added — Passe qualité (feature/quality-pass)
 
 Couverture tests backend 21 → 124, frontend 3 → 43. Simplifications : Haversine centralisé (`Core/Domain/Geo.cs`), ORS `SendAndParseAsync` dédupliqué, `UpstreamBadGateway` + `ILogger<T>`, bbox prefilter `CommuneDataset.FindNearest` (~100× sur 50 km), warm-up eager du dataset. Nettoyage : suppression `track-upload` (mort code).
