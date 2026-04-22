@@ -84,9 +84,10 @@ export class TrackWeatherPanelComponent {
   weekday(iso: string): string { return weekdayLabel(iso); }
   dayOfMonth(iso: string): string { return dayLabel(iso); }
   windyUrl(lat: number, lon: number): string {
-    // Vue carte Windy standard, centrée sur le point.
-    // Zoom 12 = échelle communale (au lieu de 10 régional), plus précis
-    // sans perdre le contexte environnant.
-    return `https://www.windy.com/?${lat.toFixed(4)},${lon.toFixed(4)},12`;
+    // "rain," en premier = force la couche précipitations (avec particules
+    // de vent visibles en fond). Évite que Windy retombe sur la dernière
+    // couche cachée du navigateur (souvent "wind" pur, moins parlant).
+    // Zoom 12 = échelle communale.
+    return `https://www.windy.com/?rain,${lat.toFixed(4)},${lon.toFixed(4)},12`;
   }
 }
