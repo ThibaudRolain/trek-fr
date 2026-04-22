@@ -1,0 +1,72 @@
+# Compose de PROD — utilisé sur le VPS Hetzner.
+# Diff vs docker-compose.yml :
+#   - backend et frontend n'exposent plus de ports sur l'hôte (accès via Caddy)
+#   - Caddy écoute sur 80/443 et route vers les services par leur nom docker
+#   - postgis n'est plus exposé non plus (accès interne uniquement)
+#   - la clé ORS est lue depuis un fichier .env local (NON COMMITÉ)
+#
+# Lancement (depuis la racine du repo sur le VPS) :
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: trek-fr-postgis
+    environment:
+      POSTGRES_USER: trek
+      POSTGRES_PASSWORD: trek
+      POSTGRES_DB: trek_fr
+    volumes:
+      - postgis-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trek -d trek_fr"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trek-fr-backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      # Clé ORS lue depuis .env (ORS_API_KEY=...) ; refuse le démarrage si absente.
+      OpenRouteService__ApiKey: ${ORS_API_KEY:?Set ORS_API_KEY in .env}
+      # Origines autorisées par CORS — le frontend public.
+      ALLOWED_ORIGINS: https://178-104-47-96.sslip.io
+    depends_on:
+      postgis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trek-fr-frontend
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: trek-fr-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgis-data:
+  caddy-data:
+  caddy-config:
