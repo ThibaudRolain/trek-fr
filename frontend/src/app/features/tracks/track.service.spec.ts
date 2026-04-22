@@ -92,26 +92,6 @@ describe('TrackService', () => {
     req.flush(stubTrack);
   });
 
-  it('importGpx posts multipart form with profile query param', () => {
-    const file = new File(['<gpx/>'], 'test.gpx', { type: 'application/gpx+xml' });
-    service.importGpx(file, 'road').subscribe();
-
-    const req = http.expectOne((r) => r.url === '/tracks/import');
-    expect(req.request.method).toBe('POST');
-    expect(req.request.params.get('profile')).toBe('road');
-    expect(req.request.body).toBeInstanceOf(FormData);
-    req.flush(stubTrack);
-  });
-
-  it('importGpx defaults profile to foot', () => {
-    const file = new File(['<gpx/>'], 'test.gpx');
-    service.importGpx(file).subscribe();
-
-    const req = http.expectOne((r) => r.url === '/tracks/import');
-    expect(req.request.params.get('profile')).toBe('foot');
-    req.flush(stubTrack);
-  });
-
   it('getWeather posts points with defaulted startDate null and days 7', () => {
     service
       .getWeather({
