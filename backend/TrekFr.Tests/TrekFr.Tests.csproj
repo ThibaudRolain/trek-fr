@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.6" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
@@ -18,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TrekFr.Core\TrekFr.Core.csproj" />
     <ProjectReference Include="..\TrekFr.Infrastructure\TrekFr.Infrastructure.csproj" />
+    <ProjectReference Include="..\TrekFr.Api\TrekFr.Api.csproj" />
   </ItemGroup>
 
 </Project>

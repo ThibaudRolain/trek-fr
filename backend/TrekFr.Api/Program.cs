@@ -86,3 +86,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
 app.MapTracksEndpoints();
 
 app.Run();
+
+// Rend le type Program visible pour WebApplicationFactory<Program> côté tests.
+public partial class Program;
