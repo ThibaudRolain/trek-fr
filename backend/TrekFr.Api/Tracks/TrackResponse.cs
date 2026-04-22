@@ -10,9 +10,10 @@ public sealed record TrackResponse(
     string Profile,
     TrackStatsDto Stats,
     object Geojson,
-    double[]? Bbox)
+    double[]? Bbox,
+    string? ProposedDestinationName)
 {
-    public static TrackResponse From(Track track, TrackStats stats)
+    public static TrackResponse From(Track track, TrackStats stats, string? proposedDestinationName = null)
     {
         var coords = track.Points
             .Select(p => p.Elevation is { } e
@@ -40,11 +41,14 @@ public sealed record TrackResponse(
             track.Profile.ToString().ToLowerInvariant(),
             TrackStatsDto.From(stats),
             geojson,
-            ComputeBbox(track.Points));
+            ComputeBbox(track.Points),
+            proposedDestinationName);
     }
 
     public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
     public static TrackResponse From(GeneratedTrack generated) => From(generated.Track, generated.Stats);
+    public static TrackResponse From(ProposedGeneratedTrack proposed) =>
+        From(proposed.Track, proposed.Stats, proposed.Destination.Name);
 
     private static double[]? ComputeBbox(IReadOnlyList<Coordinate> points)
     {

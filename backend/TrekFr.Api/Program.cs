@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using TrekFr.Api.Tracks;
 using TrekFr.Core.Abstractions;
 using TrekFr.Core.UseCases;
+using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.Gpx;
 using TrekFr.Infrastructure.OpenRouteService;
 
@@ -44,8 +45,10 @@ builder.Services.AddHttpClient<IRoutingProvider, OpenRouteServiceRouter>((sp, cl
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
 builder.Services.AddScoped<GenerateRoundTrip>();
 builder.Services.AddScoped<RouteAToB>();
+builder.Services.AddScoped<ProposeDestination>();
 
 var app = builder.Build();
 

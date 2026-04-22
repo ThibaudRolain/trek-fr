@@ -59,9 +59,9 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
               </div>
             } @else if (startPoint()) {
               <p class="text-slate-400">
-                Arrivée (optionnelle) — clique à nouveau pour la poser.
-                <span class="block text-slate-500">
-                  La proposition automatique arrive bientôt.
+                Arrivée (optionnelle) — clique à nouveau pour la poser,
+                <span class="text-slate-500">
+                  ou laisse l'app te proposer une ville cohérente.
                 </span>
               </p>
             } @else {

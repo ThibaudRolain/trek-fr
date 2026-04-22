@@ -17,6 +17,7 @@ export interface TrackResponse {
   stats: TrackStats;
   geojson: Feature<LineString>;
   bbox: [number, number, number, number] | null;
+  proposedDestinationName: string | null;
 }
 
 export interface LatLon {

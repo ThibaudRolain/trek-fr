@@ -17,6 +17,7 @@ const sampleTrack: TrackResponse = {
     properties: {},
   },
   bbox: null,
+  proposedDestinationName: null,
 };
 
 describe('TrackStatsPanelComponent', () => {
@@ -42,5 +43,14 @@ describe('TrackStatsPanelComponent', () => {
     expect(text).toContain('+613 m');
     expect(text).toContain('−601 m');
     expect(text).toContain('3h45');
+  });
+
+  it('shows the proposed destination name when the backend proposed one', () => {
+    const fixture = TestBed.createComponent(TrackStatsPanelComponent);
+    fixture.componentRef.setInput('track', { ...sampleTrack, proposedDestinationName: 'Sarlat-la-Canéda' });
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Arrivée proposée');
+    expect(text).toContain('Sarlat-la-Canéda');
   });
 });

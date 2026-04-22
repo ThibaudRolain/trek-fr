@@ -4,6 +4,7 @@ import {
   ElementRef,
   OnDestroy,
   ViewChild,
+  computed,
   effect,
   input,
   output,
@@ -71,6 +72,17 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private endMarker?: Marker;
   private readonly ready = signal(false);
 
+  // When the backend proposes an arrival (propose-destination flow) the trace's last
+  // coord is the arrival city — pin it automatically even if the user hasn't clicked one.
+  private readonly proposedEndFromTrack = computed<LatLon | null>(() => {
+    const t = this.track();
+    if (!t?.proposedDestinationName) return null;
+    const coords = t.geojson.geometry.coordinates;
+    if (coords.length === 0) return null;
+    const last = coords[coords.length - 1];
+    return { lat: last[1], lon: last[0] };
+  });
+
   constructor() {
     effect(() => {
       const t = this.track();
@@ -83,9 +95,10 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.startMarker = this.renderMarker(this.startMarker, p, '#f59e0b');
     });
     effect(() => {
-      const p = this.endPoint();
+      const explicit = this.endPoint();
+      const proposed = this.proposedEndFromTrack();
       if (!this.map) return;
-      this.endMarker = this.renderMarker(this.endMarker, p, '#ef4444');
+      this.endMarker = this.renderMarker(this.endMarker, explicit ?? proposed, '#ef4444');
     });
   }
 

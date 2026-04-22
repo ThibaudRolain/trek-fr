@@ -45,6 +45,7 @@ public static class TracksEndpoints
         TrackGenerateRequest request,
         GenerateRoundTrip roundTrip,
         RouteAToB aToB,
+        ProposeDestination propose,
         CancellationToken ct)
     {
         if (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180)
@@ -62,22 +63,24 @@ public static class TracksEndpoints
 
         try
         {
-            var generated = request.Mode switch
+            var start = new Coordinate(request.Latitude, request.Longitude);
+            return request.Mode switch
             {
-                TrackGenerationMode.AToB => await aToB.ExecuteAsync(
-                    new Coordinate(request.Latitude, request.Longitude),
-                    new Coordinate(request.EndLatitude!.Value, request.EndLongitude!.Value),
-                    request.Profile,
-                    ct),
-                TrackGenerationMode.RoundTrip => await roundTrip.ExecuteAsync(
-                    new Coordinate(request.Latitude, request.Longitude),
-                    request.DistanceKm * 1000d,
-                    request.Profile,
-                    request.Seed,
-                    ct),
-                _ => throw new System.InvalidOperationException("Unreachable — mode was validated above."),
+                TrackGenerationMode.AToB when request.EndLatitude is { } endLat && request.EndLongitude is { } endLon
+                    => Results.Ok(TrackResponse.From(
+                        await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, ct))),
+                TrackGenerationMode.AToB
+                    => Results.Ok(TrackResponse.From(
+                        await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct))),
+                TrackGenerationMode.RoundTrip
+                    => Results.Ok(TrackResponse.From(
+                        await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct))),
+                _ => Results.BadRequest(new { error = "unknown mode" }),
             };
-            return Results.Ok(TrackResponse.From(generated));
+        }
+        catch (NoDestinationCandidateException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
         }
         catch (OpenRouteServiceException ex)
         {
@@ -99,18 +102,18 @@ public static class TracksEndpoints
 
     private static IResult? ValidateAToB(TrackGenerateRequest request)
     {
-        if (request.EndLatitude is not { } endLat || request.EndLongitude is not { } endLon)
+        // Distance is required in both sub-modes (routing needs it for the propose path,
+        // and it's a sanity check for the explicit-end path).
+        if (request.DistanceKm is <= 0 or > 200)
         {
-            // ProposeDestination (Phase B) fills this in; for now return 501 so the UI can show
-            // an accurate "pose une arrivée manuellement" hint instead of a validation error.
-            return Results.Problem(
-                detail: "La proposition automatique de destination arrive dans une prochaine slice. Pose une arrivée manuellement pour l'instant.",
-                statusCode: StatusCodes.Status501NotImplemented,
-                title: "Fonctionnalité à venir");
+            return Results.BadRequest(new { error = "distance must be between 1 and 200 km" });
         }
-        if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
+        if (request.EndLatitude is { } endLat && request.EndLongitude is { } endLon)
         {
-            return Results.BadRequest(new { error = "invalid end coordinates" });
+            if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
+            {
+                return Results.BadRequest(new { error = "invalid end coordinates" });
+            }
         }
         return null;
     }

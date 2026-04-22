@@ -11,6 +11,12 @@ import type { TrackResponse } from './track.models';
           <h2 class="font-medium text-slate-100">{{ t.name ?? 'Trace générée' }}</h2>
           <span class="text-xs uppercase tracking-wide text-slate-400">{{ t.profile }}</span>
         </div>
+        @if (t.proposedDestinationName; as dest) {
+          <p class="mb-2 text-xs text-slate-400">
+            Arrivée proposée :
+            <span class="font-medium text-slate-100">{{ dest }}</span>
+          </p>
+        }
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <dt class="text-slate-400">Distance</dt>
           <dd class="text-right font-mono text-slate-100">{{ distanceKm() }} km</dd>
