@@ -5,6 +5,7 @@ using TrekFr.Core.UseCases;
 using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.Gpx;
 using TrekFr.Infrastructure.OpenRouteService;
+using TrekFr.Infrastructure.Stages;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,10 +46,15 @@ builder.Services.AddHttpClient<IRoutingProvider, OpenRouteServiceRouter>((sp, cl
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddSingleton<CommunesDataset>();
 builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
+builder.Services.AddSingleton<IRefugeProvider, NullRefugeProvider>();
+builder.Services.AddSingleton<CommunesTownProvider>();
+builder.Services.AddSingleton<ISleepSpotProvider, CompositeSleepSpotProvider>();
 builder.Services.AddScoped<GenerateRoundTrip>();
 builder.Services.AddScoped<RouteAToB>();
 builder.Services.AddScoped<ProposeDestination>();
+builder.Services.AddScoped<SplitIntoStages>();
 
 var app = builder.Build();
 
