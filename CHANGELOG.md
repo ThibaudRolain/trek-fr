@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-22
 
+### Added — Passe qualité (feature/quality-pass)
+
+Couverture tests backend 21 → 124, frontend 3 → 43. Simplifications : Haversine centralisé (`Core/Domain/Geo.cs`), ORS `SendAndParseAsync` dédupliqué, `UpstreamBadGateway` + `ILogger<T>`, bbox prefilter `CommuneDataset.FindNearest` (~100× sur 50 km), warm-up eager du dataset. Nettoyage : suppression `track-upload` (mort code).
+
+**Doc détaillée** : [`docs/merges/2026-04-22-feature-quality-pass.md`](docs/merges/2026-04-22-feature-quality-pass.md) • **Merge** : `786162c`
+
 ### Added — CI pipeline (feature/ci)
 
 Pipeline GitHub Actions (build + test backend .NET + frontend Angular) + Dependabot hebdo (nuget/npm/actions) + pin SDK `.NET 10.0.202` + budgets Angular 1.5MB/2MB + badge README.
