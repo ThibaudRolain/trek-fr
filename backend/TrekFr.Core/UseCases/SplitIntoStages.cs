@@ -11,7 +11,6 @@ public sealed class SplitIntoStages(ISleepSpotProvider spotProvider)
 {
     private const double ElevationThresholdMeters = 3d;
     private const double EarthRadiusMeters = 6_371_000d;
-    private const double ExtendedWindowFactor = 2d;
     private const double PatrimonyDistancePenaltyPerKm = 5d;
     private const int MaxStagesSafety = 100;
 
@@ -60,11 +59,8 @@ public sealed class SplitIntoStages(ISleepSpotProvider spotProvider)
             var stageDistAtPivot = pivotCumDist - cumDist[fromIndex];
 
             var pick = PickCandidate(
-                    candidates, cumDist, fromIndex, lastIndex, pivotCumDist,
-                    stageDistAtPivot, options.WindowTolerance)
-                ?? PickCandidate(
-                    candidates, cumDist, fromIndex, lastIndex, pivotCumDist,
-                    stageDistAtPivot, options.WindowTolerance * ExtendedWindowFactor);
+                candidates, cumDist, fromIndex, lastIndex, pivotCumDist,
+                stageDistAtPivot, options.WindowTolerance);
 
             if (pick is null)
             {
