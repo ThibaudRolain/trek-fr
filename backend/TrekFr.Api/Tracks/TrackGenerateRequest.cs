@@ -16,4 +16,7 @@ public sealed record TrackGenerateRequest(
     int? Seed = null,
     TrackGenerationMode Mode = TrackGenerationMode.RoundTrip,
     double? EndLatitude = null,
-    double? EndLongitude = null);
+    double? EndLongitude = null,
+    bool SplitStages = false,
+    double? StageDistanceKm = null,
+    double? StageElevationGain = null);

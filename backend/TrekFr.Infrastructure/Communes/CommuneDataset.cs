@@ -51,6 +51,27 @@ public sealed class CommuneDataset : INearestCommuneFinder
         return new Commune(best.Name, new Coordinate(best.Lat, best.Lon), best.Population);
     }
 
+    /// <summary>
+    /// Nearest commune in the dataset + its crow-fly distance, without any max cap.
+    /// Used to enrich warnings ("no commune ≤ 2 km — nearest is X at Y km").
+    /// </summary>
+    public (Commune Commune, double DistanceMeters)? FindNearestWithDistance(Coordinate point)
+    {
+        CommuneEntry? best = null;
+        var bestDist = double.PositiveInfinity;
+        foreach (var entry in _entries)
+        {
+            var d = Geo.HaversineMeters(point.Latitude, point.Longitude, entry.Lat, entry.Lon);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = entry;
+            }
+        }
+        if (best is null) return null;
+        return (new Commune(best.Name, new Coordinate(best.Lat, best.Lon), best.Population), bestDist);
+    }
+
     private static IReadOnlyList<CommuneEntry> LoadEmbedded()
     {
         var assembly = typeof(CommuneDataset).Assembly;
