@@ -47,4 +47,25 @@ public sealed class CommunesDestinationProposer(CommuneDataset dataset) : IDesti
                 new Coordinate(picked.Lat, picked.Lon),
                 picked.Population));
     }
+
+    public Task<IReadOnlyList<ProposedDestination>> GetTopCandidatesAsync(
+        Coordinate start,
+        double targetDistanceMeters,
+        Profile profile,
+        int topN,
+        CancellationToken ct = default)
+    {
+        var min = targetDistanceMeters * (1 - DistanceTolerance);
+        var max = targetDistanceMeters * (1 + DistanceTolerance);
+
+        IReadOnlyList<ProposedDestination> result = dataset.Entries
+            .Select(c => (commune: c, distance: Geo.HaversineMeters(start.Latitude, start.Longitude, c.Lat, c.Lon)))
+            .Where(x => x.distance >= min && x.distance <= max)
+            .OrderByDescending(x => x.commune.Score)
+            .Take(topN)
+            .Select(x => new ProposedDestination(x.commune.Name, new Coordinate(x.commune.Lat, x.commune.Lon), x.commune.Population))
+            .ToList();
+
+        return Task.FromResult(result);
+    }
 }
