@@ -63,6 +63,8 @@ export interface GenerateTrackRequest {
   splitStages?: boolean;
   stageDistanceKm?: number;
   stageElevationGain?: number;
+  minElevationGainMeters?: number;
+  maxElevationGainMeters?: number;
 }
 
 export interface WeatherPointInput {

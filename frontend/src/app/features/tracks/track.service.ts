@@ -27,6 +27,8 @@ export class TrackService {
       splitStages: request.splitStages ?? false,
       stageDistanceKm: request.stageDistanceKm ?? null,
       stageElevationGain: request.stageElevationGain ?? null,
+      minElevationGainMeters: request.minElevationGainMeters ?? null,
+      maxElevationGainMeters: request.maxElevationGainMeters ?? null,
     });
   }
 

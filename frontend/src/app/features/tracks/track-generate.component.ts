@@ -106,6 +106,41 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
         </select>
       </label>
 
+      <details class="text-xs">
+        <summary class="cursor-pointer text-slate-400 hover:text-slate-200">Filtre dénivelé (optionnel)</summary>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label class="flex flex-col gap-1">
+            <span class="text-slate-500">D+ min (m)</span>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              [(ngModel)]="minElevationGainMeters"
+              name="minElevationGainMeters"
+              placeholder="—"
+              class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+              [disabled]="loading()"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-slate-500">D+ max (m)</span>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              [(ngModel)]="maxElevationGainMeters"
+              name="maxElevationGainMeters"
+              placeholder="—"
+              class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-100"
+              [disabled]="loading()"
+            />
+          </label>
+        </div>
+        <p class="mt-1 text-slate-500">
+          Si aucune trace dans la plage, on t'avertit — pas de bricolage silencieux.
+        </p>
+      </details>
+
       @if (mode() === 'roundTrip') {
         <label class="flex flex-col gap-1 text-xs">
           <span class="text-slate-400">Seed (optionnel, pour varier)</span>
@@ -209,6 +244,8 @@ export class TrackGenerateComponent {
   splitStages = false;
   stageDistanceKm = 22;
   stageElevationGain = 1000;
+  minElevationGainMeters: number | null = null;
+  maxElevationGainMeters: number | null = null;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -275,6 +312,8 @@ export class TrackGenerateComponent {
         splitStages: this.splitStages,
         stageDistanceKm: this.splitStages ? this.stageDistanceKm : undefined,
         stageElevationGain: this.splitStages ? this.stageElevationGain : undefined,
+        minElevationGainMeters: this.minElevationGainMeters ?? undefined,
+        maxElevationGainMeters: this.maxElevationGainMeters ?? undefined,
       })
       .subscribe({
         next: (res) => {

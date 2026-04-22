@@ -118,6 +118,7 @@ public static class TracksEndpoints
         try
         {
             var start = new Coordinate(request.Latitude, request.Longitude);
+            var filter = new ElevationFilter(request.MinElevationGainMeters, request.MaxElevationGainMeters);
 
             Track track;
             TrackStats stats;
@@ -134,13 +135,13 @@ public static class TracksEndpoints
                 }
                 case TrackGenerationMode.AToB:
                 {
-                    var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct);
+                    var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
                     (track, stats, proposedName) = (r.Track, r.Stats, r.Destination.Name);
                     break;
                 }
                 case TrackGenerationMode.RoundTrip:
                 {
-                    var r = await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct);
+                    var r = await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
                     (track, stats) = (r.Track, r.Stats);
                     break;
                 }
@@ -172,6 +173,10 @@ public static class TracksEndpoints
             return Results.Ok(TrackResponse.From(track, stats, proposedName, stages, warnings));
         }
         catch (NoDestinationCandidateException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (ElevationOutOfRangeException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
         }

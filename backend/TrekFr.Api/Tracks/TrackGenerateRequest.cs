@@ -19,4 +19,6 @@ public sealed record TrackGenerateRequest(
     double? EndLongitude = null,
     bool SplitStages = false,
     double? StageDistanceKm = null,
-    double? StageElevationGain = null);
+    double? StageElevationGain = null,
+    double? MinElevationGainMeters = null,
+    double? MaxElevationGainMeters = null);
