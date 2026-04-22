@@ -84,11 +84,11 @@ export class TrackWeatherPanelComponent {
   weekday(iso: string): string { return weekdayLabel(iso); }
   dayOfMonth(iso: string): string { return dayLabel(iso); }
   windyUrl(lat: number, lon: number): string {
-    // "temp," = couche température (gradient coloré partout, contrairement
-    // à "rain" qui reste visuellement vide quand aucune précip n'est prévue).
-    // Les particules de vent restent animées en fond. Zoom 12 = communal.
-    // L'utilisateur peut switcher manuellement sur pluie/radar dans la
-    // sidebar Windy s'il préfère.
-    return `https://www.windy.com/?temp,${lat.toFixed(4)},${lon.toFixed(4)},12`;
+    // "d:picker" dépose un pin + popup de prévision inline sur le point
+    // exact — plus parlant qu'un simple marker. Pas d'overlay forcé :
+    // on respecte la pref cachée du navigateur (wind par défaut, ou rain
+    // si l'utilisateur l'a déjà défini). Zoom 11 = bon compromis entre
+    // contexte régional et précision locale.
+    return `https://www.windy.com/?${lat.toFixed(4)},${lon.toFixed(4)},11,d:picker`;
   }
 }
