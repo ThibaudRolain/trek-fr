@@ -46,9 +46,9 @@ function dayLabel(dateIso: string): string {
                     target="_blank"
                     rel="noopener noreferrer"
                     (click)="$event.stopPropagation()"
-                    class="text-slate-500 hover:text-sky-300"
-                    title="Voir sur Windy"
-                  >↗</a>
+                    class="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300 hover:border-sky-400 hover:bg-sky-900/30 hover:text-sky-200"
+                    title="Voir la météo sur Windy (onglet neuf)"
+                  >Windy ↗</a>
                 </span>
                 @if (p.forecast.length > 0) {
                   <span class="flex items-center gap-2 text-xs">
@@ -84,6 +84,9 @@ export class TrackWeatherPanelComponent {
   weekday(iso: string): string { return weekdayLabel(iso); }
   dayOfMonth(iso: string): string { return dayLabel(iso); }
   windyUrl(lat: number, lon: number): string {
-    return `https://www.windy.com/?${lat.toFixed(4)},${lon.toFixed(4)},10`;
+    // -Meteogram-meteogram force l'ouverture du panneau météogramme
+    // sur le point exact (au lieu d'une simple vue carte régionale).
+    // Zoom 12 = échelle communale, adapté pour un randonneur.
+    return `https://www.windy.com/-Meteogram-meteogram?${lat.toFixed(4)},${lon.toFixed(4)},12`;
   }
 }
