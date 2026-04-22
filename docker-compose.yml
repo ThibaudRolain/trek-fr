@@ -17,5 +17,36 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trek-fr-backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      # Clé ORS : .NET bind nested → OpenRouteService:ApiKey
+      OpenRouteService__ApiKey: ${ORS_API_KEY:-}
+      # CORS : origines autorisées en prod (séparées par ,) — ici l'origine du service
+      # frontend mappé en 8081 sur l'hôte. À adapter pour un déploiement cloud.
+      ALLOWED_ORIGINS: http://localhost:8081
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trek-fr-frontend
+    ports:
+      - "8081:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgis-data:
