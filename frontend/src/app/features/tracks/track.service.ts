@@ -7,7 +7,7 @@ import type {
   TrackResponse,
 } from './track.models';
 
-const API_BASE = 'http://localhost:5179';
+const API_BASE = '';
 
 @Injectable({ providedIn: 'root' })
 export class TrackService {
