@@ -132,6 +132,17 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
         }
       </button>
 
+      @if (canProposeAnother()) {
+        <button
+          type="button"
+          (click)="submit($event)"
+          [disabled]="loading()"
+          class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:text-slate-500"
+        >
+          Autre proposition
+        </button>
+      }
+
       @if (error(); as err) {
         <p class="text-xs text-rose-400">{{ err }}</p>
       }
@@ -144,6 +155,7 @@ export class TrackGenerateComponent {
   readonly startPoint = input<LatLon | null>(null);
   readonly endPoint = input<LatLon | null>(null);
   readonly mode = input<TrackMode>('roundTrip');
+  readonly track = input<TrackResponse | null>(null);
   readonly modeChange = output<TrackMode>();
   readonly generated = output<TrackResponse>();
 
@@ -158,6 +170,12 @@ export class TrackGenerateComponent {
     if (this.loading() || this.startPoint() === null) return false;
     return true;
   });
+
+  readonly canProposeAnother = computed(() =>
+    this.mode() === 'aToB' &&
+    this.endPoint() === null &&
+    this.track()?.proposedDestinationName != null
+  );
 
   setMode(mode: TrackMode): void {
     if (mode === this.mode()) return;
