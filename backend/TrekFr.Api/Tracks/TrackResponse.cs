@@ -12,13 +12,15 @@ public sealed record TrackResponse(
     object Geojson,
     double[]? Bbox,
     string? ProposedDestinationName,
-    IReadOnlyList<StageDto>? Stages)
+    IReadOnlyList<StageDto>? Stages,
+    IReadOnlyList<string>? Warnings)
 {
     public static TrackResponse From(
         Track track,
         TrackStats stats,
         string? proposedDestinationName = null,
-        IReadOnlyList<Stage>? stages = null)
+        IReadOnlyList<Stage>? stages = null,
+        IReadOnlyList<string>? warnings = null)
     {
         var profile = track.Profile.ToString().ToLowerInvariant();
         return new TrackResponse(
@@ -28,7 +30,8 @@ public sealed record TrackResponse(
             BuildLineStringFeature(track.Points, track.Name, profile),
             ComputeBbox(track.Points),
             proposedDestinationName,
-            stages?.Select(s => StageDto.From(s, profile)).ToList());
+            stages?.Select(s => StageDto.From(s, profile)).ToList(),
+            warnings);
     }
 
     public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);

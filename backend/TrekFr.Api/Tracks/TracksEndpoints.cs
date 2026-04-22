@@ -97,24 +97,28 @@ public static class TracksEndpoints
             }
 
             IReadOnlyList<Stage>? stages = null;
+            List<string>? warnings = null;
             if (request.SplitStages)
             {
                 var opts = new StageOptions(
                     MaxDistancePerDayMeters: request.StageDistanceKm!.Value * 1000d,
                     MaxElevationGainPerDay: request.StageElevationGain!.Value,
                     ArrivalName: proposedName ?? "Arrivée");
-                stages = await splitter.ExecuteAsync(track, opts, ct);
+                try
+                {
+                    stages = await splitter.ExecuteAsync(track, opts, ct);
+                }
+                catch (NoStageSleepSpotException ex)
+                {
+                    warnings = [ex.Message];
+                }
             }
 
-            return Results.Ok(TrackResponse.From(track, stats, proposedName, stages));
+            return Results.Ok(TrackResponse.From(track, stats, proposedName, stages, warnings));
         }
         catch (NoDestinationCandidateException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
-        }
-        catch (NoStageSleepSpotException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message, stageIndex = ex.StageIndex });
         }
         catch (OpenRouteServiceException ex)
         {

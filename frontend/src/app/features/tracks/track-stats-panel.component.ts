@@ -17,6 +17,13 @@ import type { StageDto, TrackResponse, TrackStats } from './track.models';
             <span class="font-medium text-slate-100">{{ dest }}</span>
           </p>
         }
+        @if (t.warnings && t.warnings.length > 0) {
+          <div class="mb-2 rounded border border-amber-600/40 bg-amber-900/20 px-2 py-1.5 text-xs text-amber-200">
+            @for (w of t.warnings; track w) {
+              <p class="leading-snug">⚠️ {{ w }}</p>
+            }
+          </div>
+        }
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <dt class="text-slate-400">Distance</dt>
           <dd class="text-right font-mono text-slate-100">{{ formatKm(t.stats) }} km</dd>

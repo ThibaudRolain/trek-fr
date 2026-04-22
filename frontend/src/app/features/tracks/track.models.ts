@@ -37,6 +37,7 @@ export interface TrackResponse {
   bbox: [number, number, number, number] | null;
   proposedDestinationName: string | null;
   stages: StageDto[] | null;
+  warnings: string[] | null;
 }
 
 export interface LatLon {
