@@ -35,3 +35,33 @@ export interface GenerateTrackRequest {
   endLatitude?: number;
   endLongitude?: number;
 }
+
+export interface WeatherPointInput {
+  label: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface WeatherRequest {
+  points: WeatherPointInput[];
+  startDate?: string; // ISO yyyy-MM-dd
+  days?: number;
+}
+
+export interface WeatherDay {
+  date: string; // yyyy-MM-dd
+  tempMinC: number;
+  tempMaxC: number;
+  precipitationMm: number;
+  windKmh: number;
+  wmoCode: number;
+  summary: string;
+}
+
+export interface PointWeather {
+  label: string;
+  communeName: string | null;
+  latitude: number;
+  longitude: number;
+  forecast: WeatherDay[];
+}
