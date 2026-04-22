@@ -10,7 +10,9 @@
       "Bash(curl -s -o /dev/null -w \"front=%{http_code}\\\\n\" --max-time 2 http://localhost:4200/)",
       "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\",\"maxElevationGainMeters\":300}')",
       "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"aToB\",\"endLatitude\":46.24698,\"endLongitude\":2.61827,\"maxElevationGainMeters\":100}')",
-      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\"}')"
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\"}')",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\",\"maxElevationGainMeters\":650,\"seed\":42}')",
+      "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":46.25015,\"longitude\":2.58846,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"roundTrip\",\"minElevationGainMeters\":200,\"maxElevationGainMeters\":500}')"
     ]
   }
 }

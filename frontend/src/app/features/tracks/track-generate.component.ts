@@ -137,7 +137,8 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
           </label>
         </div>
         <p class="mt-1 text-slate-500">
-          Si aucune trace dans la plage, on t'avertit — pas de bricolage silencieux.
+          Tolérance élastique ±15 % autour de la plage que tu saisis
+          (atteindre un D+ pile est rare). Si rien ne rentre, on t'avertit.
         </p>
       </details>
 
