@@ -51,7 +51,20 @@ Print "Ports: API=... Front=..." back to the user so they know which worktree wi
 
    Capture the task ID. Note : the port used is whatever launchSettings.json says — `API_PORT` was only extracted to tell us where to curl later.
 
-4. **Start the frontend in the background.** Use Bash with `run_in_background: true`:
+4. **Regenerate `frontend/src/environments/environment.ts`** so the front points to THIS worktree's backend (and not some sibling's). Idempotent :
+
+   ```bash
+   cat > frontend/src/environments/environment.ts <<EOF
+   // Auto-regénéré par le skill /restart — ne pas éditer à la main.
+   // Source : backend/TrekFr.Api/Properties/launchSettings.json du worktree.
+   export const environment = {
+     production: false,
+     apiBase: 'http://localhost:$API_PORT',
+   };
+   EOF
+   ```
+
+5. **Start the frontend in the background.** Use Bash with `run_in_background: true`:
 
    ```bash
    cd frontend && npx ng serve --port $FRONT_PORT
@@ -59,7 +72,7 @@ Print "Ports: API=... Front=..." back to the user so they know which worktree wi
 
    Capture the task ID.
 
-5. **Verify both servers are up.** Use Monitor with an until-loop, max 30 s:
+6. **Verify both servers are up.** Use Monitor with an until-loop, max 30 s:
 
    ```bash
    for i in $(seq 1 15); do
@@ -71,7 +84,7 @@ Print "Ports: API=... Front=..." back to the user so they know which worktree wi
    echo "TIMEOUT api=$api front=$front"; exit 1
    ```
 
-6. **Report** to the user:
+7. **Report** to the user:
    - API  : http://localhost:$API_PORT (swagger at `/openapi/v1.json`)
    - Front: http://localhost:$FRONT_PORT
 
@@ -81,7 +94,7 @@ Print "Ports: API=... Front=..." back to the user so they know which worktree wi
 - If $API_PORT or $FRONT_PORT is stuck after taskkill → print the PID and its process name (`tasklist //FI "PID eq <N>"`) and ask the user to kill manually.
 - If the backend build fails, **don't start either server** — show errors. The front depends on the back for live data.
 - ORS API key lives in `backend/TrekFr.Api/appsettings.Development.json` (gitignored) — if missing, the backend will fail config validation ; surface that to the user.
-- If a sibling worktree's front points to this worktree's backend (because `track.service.ts` hardcodes `http://localhost:5179`), that's a known cross-worktree config smell — not /restart's job to fix.
+- `frontend/src/environments/environment.ts` est auto-regénéré à chaque /restart depuis launchSettings.json ; ne l'édite pas à la main, ça sera écrasé. Si tu veux un apiBase différent, modifie `backend/TrekFr.Api/Properties/launchSettings.json`.
 
 ## Pour les autres worktrees
 
@@ -89,4 +102,5 @@ Chaque worktree doit :
 1. Modifier son `backend/TrekFr.Api/Properties/launchSettings.json` pour que `applicationUrl` utilise SON port backend (ex : `http://localhost:5279`)
 2. Committer son propre `.claude/dev-ports.json` avec son port frontend (ex : `{"front": 4201}`)
 
-Le skill ci-dessus fait le reste automatiquement.
+Le skill ci-dessus fait le reste automatiquement : port detection, kill des bons process,
+régénération de `environment.ts` pour que le front pointe vers SON backend.
