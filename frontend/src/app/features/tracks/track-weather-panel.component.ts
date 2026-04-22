@@ -47,8 +47,8 @@ function dayLabel(dateIso: string): string {
                     rel="noopener noreferrer"
                     (click)="$event.stopPropagation()"
                     class="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300 hover:border-sky-400 hover:bg-sky-900/30 hover:text-sky-200"
-                    title="Voir la météo sur Windy (onglet neuf)"
-                  >Windy ↗</a>
+                    title="Ouvrir la météo détaillée sur Windy (onglet neuf)"
+                  >Météo détail ↗</a>
                 </span>
                 @if (p.forecast.length > 0) {
                   <span class="flex items-center gap-2 text-xs">
