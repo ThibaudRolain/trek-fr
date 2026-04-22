@@ -64,6 +64,7 @@ builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>
 builder.Services.AddScoped<GenerateRoundTrip>();
 builder.Services.AddScoped<RouteAToB>();
 builder.Services.AddScoped<ProposeDestination>();
+builder.Services.AddScoped<GetWeatherForPoints>();
 
 var app = builder.Build();
 

@@ -1,11 +1,15 @@
+using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 using TrekFr.Core.Domain;
 using TrekFr.Core.UseCases;
 using TrekFr.Infrastructure.OpenRouteService;
+using TrekFr.Infrastructure.Weather;
 
 namespace TrekFr.Api.Tracks;
 
@@ -22,7 +26,56 @@ public static class TracksEndpoints
         group.MapPost("/generate", GenerateAsync)
             .WithName("GenerateTrack");
 
+        group.MapPost("/weather", GetWeatherAsync)
+            .WithName("GetTrackWeather");
+
         return app;
+    }
+
+    private static async Task<IResult> GetWeatherAsync(
+        TrackWeatherRequest request,
+        GetWeatherForPoints useCase,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
+    {
+        if (request.Points is null || request.Points.Count == 0)
+        {
+            return Results.BadRequest(new { error = "at least one point is required" });
+        }
+        if (request.Points.Count > 10)
+        {
+            return Results.BadRequest(new { error = "too many points (max 10)" });
+        }
+        if (request.Days is < 1 or > 16)
+        {
+            return Results.BadRequest(new { error = "days must be between 1 and 16" });
+        }
+        foreach (var p in request.Points)
+        {
+            if (p.Latitude is < -90 or > 90 || p.Longitude is < -180 or > 180)
+            {
+                return Results.BadRequest(new { error = $"invalid coordinates for label '{p.Label}'" });
+            }
+        }
+
+        var startDate = request.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var labeled = request.Points
+            .Select(p => new LabeledPoint(p.Label, new Coordinate(p.Latitude, p.Longitude)))
+            .ToList();
+
+        try
+        {
+            var forecasts = await useCase.ExecuteAsync(labeled, startDate, request.Days, ct);
+            return Results.Ok(forecasts.Select(TrackWeatherResponse.From).ToList());
+        }
+        catch (OpenMeteoException ex)
+        {
+            loggerFactory.CreateLogger("Weather").LogWarning(ex, "Open-Meteo request failed");
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status502BadGateway,
+                title: "Open-Meteo error");
+        }
     }
 
     private static async Task<IResult> ImportGpxAsync(
