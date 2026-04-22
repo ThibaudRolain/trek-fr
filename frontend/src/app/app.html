@@ -39,6 +39,9 @@
       <div class="pointer-events-auto">
         <app-track-weather-panel [forecasts]="weather()"></app-track-weather-panel>
       </div>
+      <div class="pointer-events-auto">
+        <app-saved-tracks-panel (loadTrack)="onTrackReady($event)"></app-saved-tracks-panel>
+      </div>
     </aside>
   </main>
 </div>
