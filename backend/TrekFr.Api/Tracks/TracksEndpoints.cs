@@ -180,6 +180,14 @@ public static class TracksEndpoints
         {
             return Results.BadRequest(new { error = ex.Message });
         }
+        catch (DistanceMismatchException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (NonRoutablePointException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
         catch (OpenRouteServiceException ex)
         {
             return UpstreamBadGateway(ex, "OpenRouteService error");

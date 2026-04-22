@@ -87,9 +87,7 @@ public sealed class OpenRouteServiceRouter(
         using var response = await http.SendAsync(msg, ct);
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync(ct);
-            throw new OpenRouteServiceException(
-                $"ORS {operation} failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
+            await ThrowFromErrorResponseAsync(response, operation, ct);
         }
 
         var payload = await response.Content.ReadFromJsonAsync<OrsGeoJsonResponse>(JsonOptions, ct)
@@ -110,6 +108,40 @@ public sealed class OpenRouteServiceRouter(
             points.Add(new Coordinate(c[1], c[0], elevation));
         }
         return new Track(points, profile);
+    }
+
+    /// <summary>
+    /// ORS renvoie un JSON { error: { code, message } } sur 4xx. Les codes 2010 / 2099
+    /// correspondent à "point pas routable" — c'est une erreur utilisateur (clic trop loin
+    /// d'une route), pas une panne upstream. On throw une exception dédiée pour permettre
+    /// à l'API de renvoyer un 400 actionnable au lieu d'un 502 avec JSON technique.
+    /// </summary>
+    private static async Task ThrowFromErrorResponseAsync(HttpResponseMessage response, string context, CancellationToken ct)
+    {
+        var body = await response.Content.ReadAsStringAsync(ct);
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var error))
+            {
+                int? code = error.TryGetProperty("code", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : null;
+                var message = error.TryGetProperty("message", out var m) ? m.GetString() : null;
+
+                if (code is 2010 or 2099 || (message?.Contains("routable point", StringComparison.OrdinalIgnoreCase) ?? false))
+                {
+                    throw new NonRoutablePointException(
+                        "Point non routable : l'un des points cliqués est trop loin d'un chemin ou d'une route connue par OpenRouteService. Rapproche-toi d'un sentier, d'une route ou d'un village et réessaie.");
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // ORS has returned non-JSON — fall through to the generic error.
+        }
+
+        throw new OpenRouteServiceException(
+            $"ORS {context} failed: {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
     }
 
     private static string ToOrsProfile(Profile profile) => profile switch
@@ -176,3 +208,9 @@ public sealed class OpenRouteServiceRouter(
 }
 
 public sealed class OpenRouteServiceException(string message) : Exception(message);
+
+/// <summary>
+/// Un des points cliqués est trop loin d'un chemin routable — erreur utilisateur, pas
+/// une panne backend. L'API doit renvoyer 400 avec un message actionnable.
+/// </summary>
+public sealed class NonRoutablePointException(string message) : Exception(message);
