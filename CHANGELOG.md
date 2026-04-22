@@ -6,17 +6,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-22
 
-### Added — CI pipeline (PR feature/ci)
+### Added — CI pipeline (feature/ci)
 
-Pipeline GitHub Actions + Dependabot intégrée à `main` (merge `bdba9f8`).
+Pipeline GitHub Actions (build + test backend .NET + frontend Angular) + Dependabot hebdo (nuget/npm/actions) + pin SDK `.NET 10.0.202` + budgets Angular 1.5MB/2MB + badge README.
 
-- **Workflow CI** (`.github/workflows/ci.yml`) — build + test backend .NET + frontend Angular sur chaque push / PR vers `main`. Caches npm et NuGet configurés pour accélérer les runs (>1 min gagné par run après warm-up).
-- **Dependabot** (`.github/dependabot.yml`) — surveillance hebdo des updates pour NuGet, npm et GitHub Actions. Les PR générées sont ciblées sur `main`.
-- **Pin SDK .NET** (`global.json`) — version `10.0.202` avec `rollForward: latestFeature` pour garantir la reproductibilité locale / CI.
-- **Budgets Angular** — initial bundle passé à 1.5 MB / max 2 MB dans `frontend/angular.json` pour refléter la réalité actuelle du bundle (MapLibre + Tailwind) sans générer de warning CI.
-- **Badge CI** ajouté en tête du `README.md`.
-
-**Worktree `trek-fr-ci/` supprimé**, branche `feature/ci` supprimée locale + remote.
+**Doc détaillée** : [`docs/merges/2026-04-22-feature-ci.md`](docs/merges/2026-04-22-feature-ci.md) • **Merge** : `bdba9f8`
 
 ## Entrées antérieures
 
