@@ -35,7 +35,7 @@ public static class TracksEndpoints
     private static async Task<IResult> GetWeatherAsync(
         TrackWeatherRequest request,
         GetWeatherForPoints useCase,
-        ILoggerFactory loggerFactory,
+        ILogger<GetWeatherForPoints> logger,
         CancellationToken ct)
     {
         if (request.Points is null || request.Points.Count == 0)
@@ -70,11 +70,8 @@ public static class TracksEndpoints
         }
         catch (OpenMeteoException ex)
         {
-            loggerFactory.CreateLogger("Weather").LogWarning(ex, "Open-Meteo request failed");
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "Open-Meteo error");
+            logger.LogWarning(ex, "Open-Meteo request failed");
+            return UpstreamBadGateway(ex, "Open-Meteo error");
         }
     }
 
@@ -137,12 +134,12 @@ public static class TracksEndpoints
         }
         catch (OpenRouteServiceException ex)
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "OpenRouteService error");
+            return UpstreamBadGateway(ex, "OpenRouteService error");
         }
     }
+
+    private static IResult UpstreamBadGateway(Exception ex, string title) =>
+        Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway, title: title);
 
     private static IResult? ValidateRoundTrip(TrackGenerateRequest request)
     {
