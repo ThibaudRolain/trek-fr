@@ -5,7 +5,6 @@ import { environment } from '../../../environments/environment';
 import type {
   GenerateTrackRequest,
   PointWeather,
-  TrackProfile,
   TrackResponse,
   WeatherRequest,
 } from './track.models';
@@ -15,13 +14,6 @@ const API_BASE = environment.apiBase;
 @Injectable({ providedIn: 'root' })
 export class TrackService {
   private readonly http = inject(HttpClient);
-
-  importGpx(file: File, profile: TrackProfile = 'foot'): Observable<TrackResponse> {
-    const form = new FormData();
-    form.append('gpx', file, file.name);
-    const params = { profile };
-    return this.http.post<TrackResponse>(`${API_BASE}/tracks/import`, form, { params });
-  }
 
   generate(request: GenerateTrackRequest): Observable<TrackResponse> {
     return this.http.post<TrackResponse>(`${API_BASE}/tracks/generate`, {
@@ -33,6 +25,11 @@ export class TrackService {
       mode: request.mode,
       endLatitude: request.endLatitude ?? null,
       endLongitude: request.endLongitude ?? null,
+      splitStages: request.splitStages ?? false,
+      stageDistanceKm: request.stageDistanceKm ?? null,
+      stageElevationGain: request.stageElevationGain ?? null,
+      minElevationGainMeters: request.minElevationGainMeters ?? null,
+      maxElevationGainMeters: request.maxElevationGainMeters ?? null,
     });
   }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using TrekFr.Core.Domain;
 using TrekFr.Core.UseCases;
+using TrekFr.Infrastructure.Communes;
 using TrekFr.Infrastructure.OpenRouteService;
 using TrekFr.Infrastructure.Weather;
 
@@ -35,7 +37,7 @@ public static class TracksEndpoints
     private static async Task<IResult> GetWeatherAsync(
         TrackWeatherRequest request,
         GetWeatherForPoints useCase,
-        ILoggerFactory loggerFactory,
+        ILogger<GetWeatherForPoints> logger,
         CancellationToken ct)
     {
         if (request.Points is null || request.Points.Count == 0)
@@ -70,11 +72,8 @@ public static class TracksEndpoints
         }
         catch (OpenMeteoException ex)
         {
-            loggerFactory.CreateLogger("Weather").LogWarning(ex, "Open-Meteo request failed");
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "Open-Meteo error");
+            logger.LogWarning(ex, "Open-Meteo request failed");
+            return UpstreamBadGateway(ex, "Open-Meteo error");
         }
     }
 
@@ -99,6 +98,8 @@ public static class TracksEndpoints
         GenerateRoundTrip roundTrip,
         RouteAToB aToB,
         ProposeDestination propose,
+        SplitIntoStages splitter,
+        CommuneDataset communes,
         CancellationToken ct)
     {
         if (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180)
@@ -111,38 +112,90 @@ public static class TracksEndpoints
             TrackGenerationMode.AToB => ValidateAToB(request),
             TrackGenerationMode.RoundTrip => ValidateRoundTrip(request),
             _ => Results.BadRequest(new { error = "unknown mode" }),
-        };
+        } ?? ValidateSplit(request);
         if (validation is not null) return validation;
 
         try
         {
             var start = new Coordinate(request.Latitude, request.Longitude);
-            return request.Mode switch
+            var filter = new ElevationFilter(request.MinElevationGainMeters, request.MaxElevationGainMeters);
+
+            Track track;
+            TrackStats stats;
+            string? proposedName = null;
+
+            switch (request.Mode)
             {
-                TrackGenerationMode.AToB when request.EndLatitude is { } endLat && request.EndLongitude is { } endLon
-                    => Results.Ok(TrackResponse.From(
-                        await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, ct))),
-                TrackGenerationMode.AToB
-                    => Results.Ok(TrackResponse.From(
-                        await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct))),
-                TrackGenerationMode.RoundTrip
-                    => Results.Ok(TrackResponse.From(
-                        await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, ct))),
-                _ => Results.BadRequest(new { error = "unknown mode" }),
-            };
+                case TrackGenerationMode.AToB
+                    when request.EndLatitude is { } endLat && request.EndLongitude is { } endLon:
+                {
+                    var r = await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, filter, ct);
+                    (track, stats) = (r.Track, r.Stats);
+                    break;
+                }
+                case TrackGenerationMode.AToB:
+                {
+                    var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
+                    (track, stats, proposedName) = (r.Track, r.Stats, r.Destination.Name);
+                    break;
+                }
+                case TrackGenerationMode.RoundTrip:
+                {
+                    var r = await roundTrip.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
+                    (track, stats) = (r.Track, r.Stats);
+                    break;
+                }
+                default:
+                    return Results.BadRequest(new { error = "unknown mode" });
+            }
+
+            IReadOnlyList<Stage>? stages = null;
+            List<WarningDto>? warnings = null;
+            if (request.SplitStages)
+            {
+                var opts = new StageOptions(
+                    MaxDistancePerDayMeters: request.StageDistanceKm!.Value * 1000d,
+                    MaxElevationGainPerDay: request.StageElevationGain!.Value,
+                    ArrivalName: proposedName ?? "Arrivée");
+                try
+                {
+                    stages = await splitter.ExecuteAsync(track, opts, ct);
+                }
+                catch (NoStageSleepSpotException ex)
+                {
+                    var nearest = communes.FindNearestWithDistance(ex.PivotLocation);
+                    warnings = nearest is null
+                        ? [new WarningDto(ex.Message)]
+                        : [new WarningDto(ex.Message, nearest.Value.Commune.Name, nearest.Value.DistanceMeters)];
+                }
+            }
+
+            return Results.Ok(TrackResponse.From(track, stats, proposedName, stages, warnings));
         }
         catch (NoDestinationCandidateException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
         }
+        catch (ElevationOutOfRangeException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (DistanceMismatchException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (NonRoutablePointException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
         catch (OpenRouteServiceException ex)
         {
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "OpenRouteService error");
+            return UpstreamBadGateway(ex, "OpenRouteService error");
         }
     }
+
+    private static IResult UpstreamBadGateway(Exception ex, string title) =>
+        Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway, title: title);
 
     private static IResult? ValidateRoundTrip(TrackGenerateRequest request)
     {
@@ -155,18 +208,34 @@ public static class TracksEndpoints
 
     private static IResult? ValidateAToB(TrackGenerateRequest request)
     {
-        // Distance is required in both sub-modes (routing needs it for the propose path,
-        // and it's a sanity check for the explicit-end path).
+        bool hasEndPoint = request.EndLatitude is not null && request.EndLongitude is not null;
+
+        if (hasEndPoint)
+        {
+            if (request.EndLatitude is < -90 or > 90 || request.EndLongitude is < -180 or > 180)
+            {
+                return Results.BadRequest(new { error = "invalid end coordinates" });
+            }
+            return null;
+        }
+
         if (request.DistanceKm is <= 0 or > 200)
         {
             return Results.BadRequest(new { error = "distance must be between 1 and 200 km" });
         }
-        if (request.EndLatitude is { } endLat && request.EndLongitude is { } endLon)
+        return null;
+    }
+
+    private static IResult? ValidateSplit(TrackGenerateRequest request)
+    {
+        if (!request.SplitStages) return null;
+        if (request.StageDistanceKm is not (> 0 and <= 100))
         {
-            if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
-            {
-                return Results.BadRequest(new { error = "invalid end coordinates" });
-            }
+            return Results.BadRequest(new { error = "stageDistanceKm must be between 1 and 100" });
+        }
+        if (request.StageElevationGain is not (> 0 and <= 10_000))
+        {
+            return Results.BadRequest(new { error = "stageElevationGain must be between 1 and 10000 meters" });
         }
         return null;
     }

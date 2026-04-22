@@ -4,11 +4,35 @@ export type TrackProfile = 'foot' | 'mtb' | 'road';
 
 export type TrackMode = 'roundTrip' | 'aToB';
 
+export type SleepSpotKind = 'refuge' | 'town' | 'arrival';
+
 export interface TrackStats {
   distanceMeters: number;
   elevationGainMeters: number;
   elevationLossMeters: number;
   estimatedDurationSeconds: number;
+}
+
+export interface SleepSpotDto {
+  name: string;
+  latitude: number;
+  longitude: number;
+  kind: SleepSpotKind;
+}
+
+export interface StageDto {
+  index: number;
+  stats: TrackStats;
+  geojson: Feature<LineString>;
+  bbox: [number, number, number, number] | null;
+  endSleepSpot: SleepSpotDto;
+  offTrackDistanceMeters: number | null;
+}
+
+export interface WarningDto {
+  message: string;
+  nearbyPlace: string | null;
+  nearbyPlaceDistanceMeters: number | null;
 }
 
 export interface TrackResponse {
@@ -18,6 +42,9 @@ export interface TrackResponse {
   geojson: Feature<LineString>;
   bbox: [number, number, number, number] | null;
   proposedDestinationName: string | null;
+  stages: StageDto[] | null;
+  warnings: WarningDto[] | null;
+  seed: number | null;
 }
 
 export interface LatLon {
@@ -34,6 +61,11 @@ export interface GenerateTrackRequest {
   mode: TrackMode;
   endLatitude?: number;
   endLongitude?: number;
+  splitStages?: boolean;
+  stageDistanceKm?: number;
+  stageElevationGain?: number;
+  minElevationGainMeters?: number;
+  maxElevationGainMeters?: number;
 }
 
 export interface WeatherPointInput {

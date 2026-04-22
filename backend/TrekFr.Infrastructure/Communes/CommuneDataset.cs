@@ -28,11 +28,19 @@ public sealed class CommuneDataset : INearestCommuneFinder
     public Commune? FindNearest(Coordinate point, double maxDistanceKm = 50)
     {
         var maxMeters = maxDistanceKm * 1000d;
+        // Bbox prefilter : évite ~31k haversines quand on cherche un rayon de quelques km.
+        // 1° de latitude ≈ 111 km ; 1° de longitude ≈ 111 km × cos(lat).
+        var dLat = maxDistanceKm / 111d;
+        var cosLat = Math.Cos(point.Latitude * Math.PI / 180d);
+        var dLon = cosLat > 0.01 ? maxDistanceKm / (111d * cosLat) : 180d;
+
         CommuneEntry? best = null;
         var bestDist = double.PositiveInfinity;
         foreach (var entry in _entries)
         {
-            var d = Haversine(point.Latitude, point.Longitude, entry.Lat, entry.Lon);
+            if (Math.Abs(entry.Lat - point.Latitude) > dLat) continue;
+            if (Math.Abs(entry.Lon - point.Longitude) > dLon) continue;
+            var d = Geo.HaversineMeters(point.Latitude, point.Longitude, entry.Lat, entry.Lon);
             if (d < bestDist)
             {
                 bestDist = d;
@@ -41,6 +49,27 @@ public sealed class CommuneDataset : INearestCommuneFinder
         }
         if (best is null || bestDist > maxMeters) return null;
         return new Commune(best.Name, new Coordinate(best.Lat, best.Lon), best.Population);
+    }
+
+    /// <summary>
+    /// Nearest commune in the dataset + its crow-fly distance, without any max cap.
+    /// Used to enrich warnings ("no commune ≤ 2 km — nearest is X at Y km").
+    /// </summary>
+    public (Commune Commune, double DistanceMeters)? FindNearestWithDistance(Coordinate point)
+    {
+        CommuneEntry? best = null;
+        var bestDist = double.PositiveInfinity;
+        foreach (var entry in _entries)
+        {
+            var d = Geo.HaversineMeters(point.Latitude, point.Longitude, entry.Lat, entry.Lon);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = entry;
+            }
+        }
+        if (best is null) return null;
+        return (new Commune(best.Name, new Coordinate(best.Lat, best.Lon), best.Population), bestDist);
     }
 
     private static IReadOnlyList<CommuneEntry> LoadEmbedded()
@@ -52,19 +81,6 @@ public sealed class CommuneDataset : INearestCommuneFinder
         return JsonSerializer.Deserialize<List<CommuneEntry>>(stream)
             ?? throw new InvalidOperationException("communes-fr.json deserialized to null.");
     }
-
-    internal static double Haversine(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double earthRadiusMeters = 6_371_000d;
-        var dLat = DegToRad(lat2 - lat1);
-        var dLon = DegToRad(lon2 - lon1);
-        var sinLat = Math.Sin(dLat / 2);
-        var sinLon = Math.Sin(dLon / 2);
-        var a = sinLat * sinLat + Math.Cos(DegToRad(lat1)) * Math.Cos(DegToRad(lat2)) * sinLon * sinLon;
-        return 2 * earthRadiusMeters * Math.Asin(Math.Min(1, Math.Sqrt(a)));
-    }
-
-    private static double DegToRad(double deg) => deg * Math.PI / 180d;
 }
 
 public sealed record CommuneEntry(

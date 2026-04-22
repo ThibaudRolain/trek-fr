@@ -6,6 +6,7 @@ using TrekFr.Infrastructure.Communes;
 using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.Gpx;
 using TrekFr.Infrastructure.OpenRouteService;
+using TrekFr.Infrastructure.Stages;
 using TrekFr.Infrastructure.Weather;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -79,12 +80,20 @@ builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherProvider>((sp, 
 builder.Services.AddSingleton<CommuneDataset>();
 builder.Services.AddSingleton<INearestCommuneFinder>(sp => sp.GetRequiredService<CommuneDataset>());
 builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
+builder.Services.AddSingleton<IRefugeProvider, NullRefugeProvider>();
+builder.Services.AddSingleton<CommunesTownProvider>();
+builder.Services.AddSingleton<ISleepSpotProvider, CompositeSleepSpotProvider>();
 builder.Services.AddScoped<GenerateRoundTrip>();
 builder.Services.AddScoped<RouteAToB>();
 builder.Services.AddScoped<ProposeDestination>();
+builder.Services.AddScoped<SplitIntoStages>();
 builder.Services.AddScoped<GetWeatherForPoints>();
 
 var app = builder.Build();
+
+// Charge le dataset communes au démarrage plutôt que sur la première requête :
+// la première /tracks/generate ou /tracks/weather paierait sinon ~500 ms de JSON parse.
+_ = app.Services.GetRequiredService<CommuneDataset>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -105,3 +114,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
 app.MapTracksEndpoints();
 
 app.Run();
+
+// Rend le type Program visible pour WebApplicationFactory<Program> côté tests.
+public partial class Program;

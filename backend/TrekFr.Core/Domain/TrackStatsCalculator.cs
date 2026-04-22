@@ -5,7 +5,6 @@ namespace TrekFr.Core.Domain;
 
 public static class TrackStatsCalculator
 {
-    private const double EarthRadiusMeters = 6_371_000d;
     private const double DefaultElevationThresholdMeters = 3d;
 
     public static TrackStats Compute(
@@ -24,21 +23,9 @@ public static class TrackStatsCalculator
         var total = 0d;
         for (var i = 1; i < points.Count; i++)
         {
-            total += Haversine(points[i - 1], points[i]);
+            total += Geo.HaversineMeters(points[i - 1], points[i]);
         }
         return total;
-    }
-
-    private static double Haversine(Coordinate a, Coordinate b)
-    {
-        var lat1 = ToRadians(a.Latitude);
-        var lat2 = ToRadians(b.Latitude);
-        var dLat = ToRadians(b.Latitude - a.Latitude);
-        var dLon = ToRadians(b.Longitude - a.Longitude);
-        var s = Math.Sin(dLat / 2d);
-        var t = Math.Sin(dLon / 2d);
-        var h = s * s + Math.Cos(lat1) * Math.Cos(lat2) * t * t;
-        return 2d * EarthRadiusMeters * Math.Asin(Math.Min(1d, Math.Sqrt(h)));
     }
 
     private static (double gain, double loss) ComputeElevation(
@@ -83,6 +70,4 @@ public static class TrackStatsCalculator
         };
         return TimeSpan.FromHours(hours);
     }
-
-    private static double ToRadians(double degrees) => degrees * Math.PI / 180d;
 }

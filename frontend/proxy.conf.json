@@ -1,11 +1,11 @@
 {
   "/tracks": {
-    "target": "http://localhost:5279",
+    "target": "http://localhost:5379",
     "secure": false,
     "changeOrigin": true
   },
   "/health": {
-    "target": "http://localhost:5279",
+    "target": "http://localhost:5379",
     "secure": false,
     "changeOrigin": true
   }

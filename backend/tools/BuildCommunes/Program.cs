@@ -19,6 +19,7 @@ internal static class Program
         var sparql = new WikidataSparqlClient(http);
         var source = new CommunesDataSource(sparql);
         var merimee = new MerimeeDataSource(http);
+        var wikipediaCategory = new MediaWikiCategoryDataSource(http);
         var scorer = new CommuneScorer(PopulationThreshold);
 
         Console.WriteLine("Fetching communes (IDs, coords, pop, INSEE, then labels)...");
@@ -48,10 +49,15 @@ internal static class Program
         Console.WriteLine($"  → {pbv.Count} communes labelled");
 
         await Task.Delay(BetweenStagesMs);
-        Console.WriteLine("Fetching 'Villes et Pays d'art et d'histoire'...");
-        // Known limitation: the direct label→entity link finds ~8 communes ; the SPARQL discovery
-        // approach times out (504) on Wikidata public endpoint. Fix deferred.
-        var vah = await source.FetchCommunesMatchingOrgLabelAsync("Villes et Pays d'art et d'histoire");
+        Console.WriteLine("Fetching 'Ville ou pays d'art et d'histoire' (Wikipedia category)...");
+        // Wikidata est incomplet (SPARQL ne trouve que ~8 communes). La catégorie
+        // Wikipedia en liste ~200 — plus fiable que la SPARQL discovery qui timeout.
+        var vah = await TryFetchWikipediaCategoryAsync(wikipediaCategory,
+        [
+            "Ville ou pays d'art et d'histoire",
+            "Ville d'art et d'histoire",
+            "Pays d'art et d'histoire",
+        ]);
         Console.WriteLine($"  → {vah.Count} communes labelled");
 
         Console.WriteLine("Scoring and filtering...");
@@ -62,6 +68,27 @@ internal static class Program
         await WriteOutputAsync(scored, repoRoot);
         PrintTopBottom(scored);
         return 0;
+    }
+
+    private static async Task<HashSet<string>> TryFetchWikipediaCategoryAsync(
+        MediaWikiCategoryDataSource source,
+        IReadOnlyList<string> candidateCategories)
+    {
+        var combined = new HashSet<string>();
+        foreach (var category in candidateCategories)
+        {
+            try
+            {
+                var qids = await source.FetchQIdsForCategoryAsync(category);
+                Console.WriteLine($"    category '{category}': {qids.Count} pages with Wikidata Q-ID");
+                combined.UnionWith(qids);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException)
+            {
+                Console.WriteLine($"    '{category}' failed: {ex.Message.Split('\n')[0]}");
+            }
+        }
+        return combined;
     }
 
     private static HttpClient BuildHttpClient()
