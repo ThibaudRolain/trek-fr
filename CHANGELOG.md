@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-22
 
+### Added — Quick-wins round-trip (feature/quick-wins)
+
+Round-trip retries 5 → 10, 400 actionnables (`NonRoutablePointException` + `DistanceMismatchException` avec meilleure distance trouvée et suggestion), validation distance ±20 %. Filtre dénivelé D+ min/max (tolérance élastique ±15 %) sur générateur et proposer (top-5 itération). Seed renvoyé dans la réponse (UX "Autre variante"). localStorage des traces sauvegardées (MVP). Skill `/restart` projet-local worktree-aware, `environment.ts` auto-regéré.
+
+**Doc détaillée** : [`docs/merges/2026-04-22-feature-quick-wins.md`](docs/merges/2026-04-22-feature-quick-wins.md) • **Merge** : `269d552`
+
 ### Added — Découpage en étapes (feature/multi-stage)
 
 Toggle "Découper en étapes" + inputs km/jour et D+/jour côté front ; domain pur `SplitIntoStages` (pivot + scoring patrimoine, refuges prioritaires) ; providers `CommunesTownProvider` / `NullRefugeProvider` / `CompositeSleepSpotProvider` ; endpoint `/tracks/generate` étendu avec `SplitStages` + `StageDto[]` ; `NoStageSleepSpot` rendu en warning ancré sur la commune la plus proche (hors 2 km) + liens Airbnb / Booking / Abritel pré-remplis ; extension météo automatique sur chaque sleep spot.
