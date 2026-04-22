@@ -13,14 +13,16 @@ public sealed record TrackResponse(
     double[]? Bbox,
     string? ProposedDestinationName,
     IReadOnlyList<StageDto>? Stages,
-    IReadOnlyList<WarningDto>? Warnings)
+    IReadOnlyList<WarningDto>? Warnings,
+    int? Seed)
 {
     public static TrackResponse From(
         Track track,
         TrackStats stats,
         string? proposedDestinationName = null,
         IReadOnlyList<Stage>? stages = null,
-        IReadOnlyList<WarningDto>? warnings = null)
+        IReadOnlyList<WarningDto>? warnings = null,
+        int? seed = null)
     {
         var profile = track.Profile.ToString().ToLowerInvariant();
         return new TrackResponse(
@@ -31,13 +33,15 @@ public sealed record TrackResponse(
             ComputeBbox(track.Points),
             proposedDestinationName,
             stages?.Select(s => StageDto.From(s, profile)).ToList(),
-            warnings);
+            warnings,
+            seed);
     }
 
     public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
-    public static TrackResponse From(GeneratedTrack generated) => From(generated.Track, generated.Stats);
+    public static TrackResponse From(GeneratedTrack generated) =>
+        From(generated.Track, generated.Stats, seed: generated.Seed);
     public static TrackResponse From(ProposedGeneratedTrack proposed) =>
-        From(proposed.Track, proposed.Stats, proposed.Destination.Name);
+        From(proposed.Track, proposed.Stats, proposed.Destination.Name, seed: proposed.Seed);
 
     internal static object BuildLineStringFeature(IReadOnlyList<Coordinate> points, string? name, string profile)
     {

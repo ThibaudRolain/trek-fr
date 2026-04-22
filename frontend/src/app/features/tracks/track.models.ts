@@ -44,6 +44,7 @@ export interface TrackResponse {
   proposedDestinationName: string | null;
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
+  seed: number | null;
 }
 
 export interface LatLon {

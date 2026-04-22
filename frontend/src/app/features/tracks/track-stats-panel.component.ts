@@ -56,6 +56,11 @@ import { SavedTracksService } from './saved-tracks.service';
             }
           </div>
         }
+        @if (t.seed !== null) {
+          <p class="mb-2 text-xs text-slate-500">
+            Variante #<span class="font-mono text-slate-400">{{ t.seed }}</span>
+          </p>
+        }
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <dt class="text-slate-400">Distance</dt>
           <dd class="text-right font-mono text-slate-100">{{ formatKm(t.stats) }} km</dd>

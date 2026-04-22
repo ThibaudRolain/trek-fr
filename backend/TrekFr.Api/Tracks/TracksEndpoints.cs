@@ -129,7 +129,7 @@ public static class TracksEndpoints
                 case TrackGenerationMode.AToB
                     when request.EndLatitude is { } endLat && request.EndLongitude is { } endLon:
                 {
-                    var r = await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, ct);
+                    var r = await aToB.ExecuteAsync(start, new Coordinate(endLat, endLon), request.Profile, filter, ct);
                     (track, stats) = (r.Track, r.Stats);
                     break;
                 }
@@ -200,16 +200,20 @@ public static class TracksEndpoints
 
     private static IResult? ValidateAToB(TrackGenerateRequest request)
     {
-        if (request.DistanceKm is <= 0 or > 200)
+        bool hasEndPoint = request.EndLatitude is not null && request.EndLongitude is not null;
+
+        if (hasEndPoint)
         {
-            return Results.BadRequest(new { error = "distance must be between 1 and 200 km" });
-        }
-        if (request.EndLatitude is { } endLat && request.EndLongitude is { } endLon)
-        {
-            if (endLat is < -90 or > 90 || endLon is < -180 or > 180)
+            if (request.EndLatitude is < -90 or > 90 || request.EndLongitude is < -180 or > 180)
             {
                 return Results.BadRequest(new { error = "invalid end coordinates" });
             }
+            return null;
+        }
+
+        if (request.DistanceKm is <= 0 or > 200)
+        {
+            return Results.BadRequest(new { error = "distance must be between 1 and 200 km" });
         }
         return null;
     }
