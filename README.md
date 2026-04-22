@@ -1,5 +1,7 @@
 # trek-fr
 
+[![CI](https://github.com/ThibaudRolain/trek-fr/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ThibaudRolain/trek-fr/actions/workflows/ci.yml)
+
 App web de planification de treks en France : agrège trace GPX, GR, météo, refuges, POI et hébergements. Trois profils : pied, VTT, vélo route.
 
 ## Stack
