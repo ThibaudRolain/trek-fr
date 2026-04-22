@@ -84,9 +84,9 @@ export class TrackWeatherPanelComponent {
   weekday(iso: string): string { return weekdayLabel(iso); }
   dayOfMonth(iso: string): string { return dayLabel(iso); }
   windyUrl(lat: number, lon: number): string {
-    // -Meteogram-meteogram force l'ouverture du panneau météogramme
-    // sur le point exact (au lieu d'une simple vue carte régionale).
-    // Zoom 12 = échelle communale, adapté pour un randonneur.
-    return `https://www.windy.com/-Meteogram-meteogram?${lat.toFixed(4)},${lon.toFixed(4)},12`;
+    // Vue carte Windy standard, centrée sur le point.
+    // Zoom 12 = échelle communale (au lieu de 10 régional), plus précis
+    // sans perdre le contexte environnant.
+    return `https://www.windy.com/?${lat.toFixed(4)},${lon.toFixed(4)},12`;
   }
 }
