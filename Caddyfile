@@ -1,0 +1,17 @@
+# Caddy — reverse proxy + TLS Let's Encrypt automatique.
+# Caddy tourne dans le réseau docker-compose et rejoint les autres services
+# par leur nom (backend, frontend). Aucune config TLS manuelle : dès que
+# Caddy voit un nom de domaine public qui pointe vers lui, il négocie un
+# certificat Let's Encrypt via le challenge HTTP-01 sur le port 80.
+
+# --- Frontend (site principal) ---
+178-104-47-96.sslip.io {
+    encode gzip
+    reverse_proxy frontend:8080
+}
+
+# --- Backend API ---
+api.178-104-47-96.sslip.io {
+    encode gzip
+    reverse_proxy backend:8080
+}

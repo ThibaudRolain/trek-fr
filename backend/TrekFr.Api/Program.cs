@@ -12,6 +12,7 @@ using TrekFr.Infrastructure.Weather;
 var builder = WebApplication.CreateBuilder(args);
 
 const string AngularDevCors = "AngularDev";
+const string ProductionCors = "Production";
 
 builder.Services.AddOpenApi();
 
@@ -23,6 +24,13 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
+// CORS prod : liste d'origines séparées par des virgules, via Cors:AllowedOrigins
+// (config nested binding) ou via l'env var ALLOWED_ORIGINS (pratique sur Fly/compose).
+var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"]
+                      ?? builder.Configuration["ALLOWED_ORIGINS"]
+                      ?? string.Empty)
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(AngularDevCors, policy =>
@@ -30,6 +38,16 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod();
+    });
+
+    options.AddPolicy(ProductionCors, policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
     });
 });
 
@@ -81,9 +99,14 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.UseCors(AngularDevCors);
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    app.UseCors(ProductionCors);
+    // Pas de UseHttpsRedirection en conteneur : la plateforme (Fly/proxy) termine TLS
+    // et l'app écoute en HTTP sur :8080. Forcer la redirection créerait une boucle.
+}
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
    .WithName("Health");
