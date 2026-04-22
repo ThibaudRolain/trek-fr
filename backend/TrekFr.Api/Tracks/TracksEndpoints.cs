@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using TrekFr.Core.Domain;
 using TrekFr.Core.UseCases;
+using TrekFr.Infrastructure.Destinations;
 using TrekFr.Infrastructure.OpenRouteService;
 
 namespace TrekFr.Api.Tracks;
@@ -48,6 +49,7 @@ public static class TracksEndpoints
         RouteAToB aToB,
         ProposeDestination propose,
         SplitIntoStages splitter,
+        CommunesDataset communes,
         CancellationToken ct)
     {
         if (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180)
@@ -97,7 +99,7 @@ public static class TracksEndpoints
             }
 
             IReadOnlyList<Stage>? stages = null;
-            List<string>? warnings = null;
+            List<WarningDto>? warnings = null;
             if (request.SplitStages)
             {
                 var opts = new StageOptions(
@@ -110,7 +112,8 @@ public static class TracksEndpoints
                 }
                 catch (NoStageSleepSpotException ex)
                 {
-                    warnings = [ex.Message];
+                    var (nearest, distance) = communes.FindNearest(ex.PivotLocation);
+                    warnings = [new WarningDto(ex.Message, nearest.Name, distance)];
                 }
             }
 

@@ -29,6 +29,12 @@ export interface StageDto {
   offTrackDistanceMeters: number | null;
 }
 
+export interface WarningDto {
+  message: string;
+  nearbyPlace: string | null;
+  nearbyPlaceDistanceMeters: number | null;
+}
+
 export interface TrackResponse {
   name: string | null;
   profile: TrackProfile;
@@ -37,7 +43,7 @@ export interface TrackResponse {
   bbox: [number, number, number, number] | null;
   proposedDestinationName: string | null;
   stages: StageDto[] | null;
-  warnings: string[] | null;
+  warnings: WarningDto[] | null;
 }
 
 export interface LatLon {

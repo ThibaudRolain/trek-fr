@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import type { StageDto, TrackResponse, TrackStats } from './track.models';
+import type { StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
 
 @Component({
   selector: 'app-track-stats-panel',
@@ -19,8 +19,39 @@ import type { StageDto, TrackResponse, TrackStats } from './track.models';
         }
         @if (t.warnings && t.warnings.length > 0) {
           <div class="mb-2 rounded border border-amber-600/40 bg-amber-900/20 px-2 py-1.5 text-xs text-amber-200">
-            @for (w of t.warnings; track w) {
-              <p class="leading-snug">⚠️ {{ w }}</p>
+            @for (w of t.warnings; track w.message) {
+              <p class="leading-snug">⚠️ {{ w.message }}</p>
+              @if (w.nearbyPlace) {
+                <p class="mt-1 text-[10px] text-amber-100/80">
+                  Commune la plus proche : <span class="font-medium">{{ w.nearbyPlace }}</span>
+                  @if (w.nearbyPlaceDistanceMeters != null) {
+                    ({{ formatKmFromMeters(w.nearbyPlaceDistanceMeters) }} km)
+                  }
+                </p>
+                <div class="mt-1 flex items-center gap-2 text-[10px]">
+                  <span class="text-amber-100/60">Cherche manuellement :</span>
+                  <a
+                    [href]="airbnbUrl(w.nearbyPlace)"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-amber-200 underline hover:text-emerald-300"
+                  >Airbnb</a>
+                  <span class="text-amber-100/40">·</span>
+                  <a
+                    [href]="bookingUrl(w.nearbyPlace)"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-amber-200 underline hover:text-emerald-300"
+                  >Booking</a>
+                  <span class="text-amber-100/40">·</span>
+                  <a
+                    [href]="abritelUrl(w.nearbyPlace)"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-amber-200 underline hover:text-emerald-300"
+                  >Abritel</a>
+                </div>
+              }
             }
           </div>
         }
@@ -158,5 +189,9 @@ export class TrackStatsPanelComponent {
 
   abritelUrl(name: string): string {
     return `https://www.abritel.fr/search?q=${encodeURIComponent(name + ', France')}`;
+  }
+
+  formatKmFromMeters(meters: number): string {
+    return (meters / 1000).toFixed(1);
   }
 }

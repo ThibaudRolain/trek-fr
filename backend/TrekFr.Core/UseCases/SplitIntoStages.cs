@@ -68,10 +68,10 @@ public sealed class SplitIntoStages(ISleepSpotProvider spotProvider)
                 throw new NoStageSleepSpotException(
                     stageIndex,
                     approxKm,
+                    track.Points[pivotIndex],
                     $"Pas de commune à ≤ 2 km de la trace autour de l'étape {stageIndex} " +
                     $"(~{approxKm:F0} km du départ). L'app ne consulte pas Airbnb / Booking / " +
-                    "Abritel — pour élargir les candidats, augmente km/jour ou D+/jour, ou " +
-                    "cherche directement sur ces plateformes sur la zone.");
+                    "Abritel — augmente km/jour ou D+/jour, ou utilise les liens ci-dessous.");
             }
 
             stages.Add(BuildStage(track, stageIndex, fromIndex, pick));
@@ -226,9 +226,13 @@ public sealed record StageOptions(
     double MaxOffTrackMeters = 2_000,
     string ArrivalName = "Arrivée");
 
-public sealed class NoStageSleepSpotException(int stageIndex, double approxKmFromStart, string message)
-    : Exception(message)
+public sealed class NoStageSleepSpotException(
+    int stageIndex,
+    double approxKmFromStart,
+    Coordinate pivotLocation,
+    string message) : Exception(message)
 {
     public int StageIndex { get; } = stageIndex;
     public double ApproxKmFromStart { get; } = approxKmFromStart;
+    public Coordinate PivotLocation { get; } = pivotLocation;
 }

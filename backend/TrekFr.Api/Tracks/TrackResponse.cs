@@ -13,14 +13,14 @@ public sealed record TrackResponse(
     double[]? Bbox,
     string? ProposedDestinationName,
     IReadOnlyList<StageDto>? Stages,
-    IReadOnlyList<string>? Warnings)
+    IReadOnlyList<WarningDto>? Warnings)
 {
     public static TrackResponse From(
         Track track,
         TrackStats stats,
         string? proposedDestinationName = null,
         IReadOnlyList<Stage>? stages = null,
-        IReadOnlyList<string>? warnings = null)
+        IReadOnlyList<WarningDto>? warnings = null)
     {
         var profile = track.Profile.ToString().ToLowerInvariant();
         return new TrackResponse(
@@ -120,3 +120,14 @@ public sealed record SleepSpotDto(
     public static SleepSpotDto From(SleepSpot s) =>
         new(s.Name, s.Location.Latitude, s.Location.Longitude, s.Kind);
 }
+
+/// <summary>
+/// Warning non-bloquant attaché à la réponse. NearbyPlace est la commune la plus
+/// proche du point de rupture (même au-delà du buffer 2 km) — le front construit
+/// les liens Airbnb/Booking/Abritel sur ce nom pour que l'utilisateur vérifie
+/// l'offre réelle.
+/// </summary>
+public sealed record WarningDto(
+    string Message,
+    string? NearbyPlace = null,
+    double? NearbyPlaceDistanceMeters = null);
