@@ -288,6 +288,18 @@ export class TrackStatsPanelComponent {
     return (meters / 1000).toFixed(1);
   }
 
+  airbnbUrl(name: string): string {
+    return `https://www.airbnb.fr/s/${encodeURIComponent(name)}--France/homes`;
+  }
+
+  bookingUrl(name: string): string {
+    return `https://www.booking.com/searchresults.fr.html?ss=${encodeURIComponent(name + ', France')}`;
+  }
+
+  abritelUrl(name: string): string {
+    return `https://www.abritel.fr/search?q=${encodeURIComponent(name + ', France')}`;
+  }
+
   saveTrack(track: TrackResponse): void {
     const suggested = track.proposedDestinationName
       ?? track.name
