@@ -16,7 +16,13 @@
       "Bash(cmd //c start powershell -NoExit -WorkingDirectory \"C:/Users/bertr/dev/trek-fr-deploy\")",
       "Bash(cmd //c start powershell -NoExit -WorkingDirectory \"C:/Users/bertr/dev/trek-fr-qa\")",
       "Bash(curl -s -X POST http://localhost:5179/tracks/generate -H \"Content-Type: application/json\" -d '{\"latitude\":45.5089697,\"longitude\":6.3842536,\"distanceKm\":15,\"profile\":\"foot\",\"mode\":\"aToB\",\"endLatitude\":45.52,\"endLongitude\":6.39}')",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(grep -E \"^Report\\\\.md$\" .gitignore)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)",
+      "Bash(sed 's/5179/5479/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)",
+      "Bash(sed 's/5179/5579/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)",
+      "Bash(sed 's/5179/5679/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)"
     ]
   }
 }

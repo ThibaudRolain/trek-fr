@@ -120,10 +120,17 @@ public sealed class OpenRouteServiceRouter(
     {
         var body = await response.Content.ReadAsStringAsync(ct);
 
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            throw new OpenRouteServiceException(
+                "Limite de requêtes ORS atteinte (429). Attends quelques secondes et réessaie.");
+        }
+
         try
         {
             using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.TryGetProperty("error", out var error))
+            if (doc.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.Object)
             {
                 int? code = error.TryGetProperty("code", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : null;
                 var message = error.TryGetProperty("message", out var m) ? m.GetString() : null;

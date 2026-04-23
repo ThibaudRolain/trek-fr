@@ -4,6 +4,14 @@ Historique des merges sur `main` — infra, outillage, opérations. Les features
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au format ISO 8601.
 
+## 2026-04-23
+
+### Added — Détails ville d'arrivée (feature/arrival-city)
+
+Exposition des champs patrimoniaux de `communes-fr.json` (MH, PBV, VAH) dans la réponse `/tracks/generate` via un nouveau `destinationInfo` DTO. Nouveau `ArrivalCityPanelComponent` Angular : badges "Plus Beau Village", "Ville d'art et d'histoire", compteur MH + lien Wikipedia — visible en mode A→B proposé par l'app.
+
+**Doc détaillée** : [`docs/merges/2026-04-23-arrival-city.md`](docs/merges/2026-04-23-arrival-city.md) • **Merge** : `4d9de75`
+
 ## 2026-04-22
 
 ### Added — Première mise en prod (feature/deploy)

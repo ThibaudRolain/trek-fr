@@ -7,8 +7,7 @@ namespace TrekFr.Tests;
 
 public class CommunesDestinationProposerTests
 {
-    private static readonly CommuneDataset Dataset = new();
-    private static readonly CommunesDestinationProposer Proposer = new(Dataset);
+    private static readonly CommunesDestinationProposer Proposer = new(TestCommuneDataset.Instance);
 
     private static double CrowFlyMeters(double lat1, double lon1, double lat2, double lon2)
     {
