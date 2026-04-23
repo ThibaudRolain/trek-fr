@@ -139,6 +139,10 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.map?.resize();
     });
     this.map.on('click', (e) => {
+      const poiFeatures = this.map?.queryRenderedFeatures(e.point, {
+        layers: [POIS_CIRCLE_LAYER_ID, POIS_LABEL_LAYER_ID],
+      });
+      if (poiFeatures && poiFeatures.length > 0) return;
       this.mapClick.emit({ lat: e.lngLat.lat, lon: e.lngLat.lng });
     });
     this.map.getCanvas().style.cursor = 'crosshair';
@@ -319,6 +323,17 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       },
       paint: { 'text-color': '#fafaf9' },
     });
+
+    const openWikipedia = (e: { features?: { properties: Record<string, unknown> }[] }) => {
+      const name = e.features?.[0]?.properties?.['name'] as string | undefined;
+      if (!name) return;
+      window.open(`https://fr.wikipedia.org/wiki/${encodeURIComponent(name)}`, '_blank', 'noopener');
+    };
+    map.on('click', POIS_CIRCLE_LAYER_ID, openWikipedia);
+    map.on('click', POIS_LABEL_LAYER_ID, openWikipedia);
+
+    map.on('mouseenter', POIS_CIRCLE_LAYER_ID, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', POIS_CIRCLE_LAYER_ID, () => { map.getCanvas().style.cursor = 'crosshair'; });
   }
 
   private removePoisLayers(): void {

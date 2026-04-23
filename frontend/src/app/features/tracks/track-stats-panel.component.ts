@@ -1,5 +1,5 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
-import type { CompositionDto, CompositionEntry, DestinationInfo, StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import type { CompositionDto, CompositionEntry, DestinationInfo, TrackResponse, TrackStats, WarningDto } from './track.models';
 import { SavedTracksService } from './saved-tracks.service';
 
 const WAYTYPE_LABELS: Record<number, string> = {
@@ -206,72 +206,6 @@ const BAR_COLORS_SURFACE: Record<number, string> = {
           </div>
         }
 
-        @if (stages(); as stages) {
-          <div class="mt-3 border-t border-slate-800 pt-2">
-            <p class="mb-1 text-xs font-medium text-slate-300">
-              Étapes ({{ stages.length }})
-            </p>
-            <p class="mb-2 text-[10px] leading-snug text-slate-500">
-              Les étapes s'arrêtent dans des communes proches de la trace.
-              L'app ne cherche pas sur Airbnb / Booking / Abritel — les liens
-              ouvrent une recherche sur chaque site pour que tu vérifies l'offre.
-            </p>
-            <ul class="flex flex-col gap-1">
-              @for (s of stages; track s.index) {
-                <li class="overflow-hidden rounded border border-slate-800 bg-slate-900/60 hover:border-slate-700">
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-slate-800/50"
-                    (click)="onStageClick(s)"
-                  >
-                    <span
-                      class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-slate-950"
-                      [style.background-color]="stageColor(s.index)"
-                    >
-                      {{ s.index }}
-                    </span>
-                    <span class="flex-1 truncate text-slate-100">
-                      {{ s.endSleepSpot.name }}
-                      @if (s.endSleepSpot.kind === 'arrival') {
-                        <span class="ml-1 text-[10px] uppercase tracking-wide text-slate-500">arrivée</span>
-                      } @else if (s.endSleepSpot.kind === 'refuge') {
-                        <span class="ml-1 text-[10px] uppercase tracking-wide text-slate-500">refuge</span>
-                      }
-                    </span>
-                    <span class="font-mono text-slate-300">{{ formatKm(s.stats) }} km</span>
-                    <span class="font-mono text-emerald-300">+{{ formatGain(s.stats) }}</span>
-                    <span class="font-mono text-slate-400">{{ formatDuration(s.stats) }}</span>
-                  </button>
-                  @if (hasLodgingLinks(s)) {
-                    <div class="flex items-center gap-2 border-t border-slate-800/60 px-2 py-1 text-[10px] text-slate-500">
-                      <span>Hébergement :</span>
-                      <a
-                        [href]="airbnbUrl(s.endSleepSpot.name)"
-                        target="_blank"
-                        rel="noopener"
-                        class="text-slate-300 hover:text-emerald-300"
-                      >Airbnb</a>
-                      <span class="text-slate-700">·</span>
-                      <a
-                        [href]="bookingUrl(s.endSleepSpot.name)"
-                        target="_blank"
-                        rel="noopener"
-                        class="text-slate-300 hover:text-emerald-300"
-                      >Booking</a>
-                      <span class="text-slate-700">·</span>
-                      <a
-                        [href]="abritelUrl(s.endSleepSpot.name)"
-                        target="_blank"
-                        rel="noopener"
-                        class="text-slate-300 hover:text-emerald-300"
-                      >Abritel</a>
-                    </div>
-                  }
-                </li>
-              }
-            </ul>
-          </div>
-        }
         <button
           type="button"
           (click)="saveTrack(t)"
@@ -291,11 +225,9 @@ const BAR_COLORS_SURFACE: Record<number, string> = {
 export class TrackStatsPanelComponent {
   private readonly saved = inject(SavedTracksService);
   readonly track = input<TrackResponse | null>(null);
-  readonly stageFocus = output<[number, number, number, number]>();
   readonly justSaved = signal(false);
   readonly heroImageUrl = signal<string | null>(null);
 
-  readonly stages = computed(() => this.track()?.stages ?? null);
   readonly destinationInfo = computed<DestinationInfo | null>(() => this.track()?.destinationInfo ?? null);
 
   constructor() {
@@ -332,20 +264,6 @@ export class TrackStatsPanelComponent {
     return h > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${m} min`;
   }
 
-  stageColor(index: number): string {
-    return index % 2 === 1 ? '#10b981' : '#0ea5e9';
-  }
-
-  onStageClick(stage: StageDto): void {
-    if (stage.bbox) this.stageFocus.emit(stage.bbox);
-  }
-
-  hasLodgingLinks(stage: StageDto): boolean {
-    const spot = stage.endSleepSpot;
-    if (spot.kind === 'town' || spot.kind === 'refuge') return true;
-    return spot.kind === 'arrival' && spot.name !== 'Arrivée';
-  }
-
   sortedEntries(entries: CompositionEntry[]): CompositionEntry[] {
     return [...entries].sort((a, b) => b.amount - a.amount);
   }
@@ -364,18 +282,6 @@ export class TrackStatsPanelComponent {
 
   surfaceColor(typeId: number): string {
     return BAR_COLORS_SURFACE[typeId] ?? '#64748b';
-  }
-
-  airbnbUrl(name: string): string {
-    return `https://www.airbnb.fr/s/${encodeURIComponent(name)}--France/homes`;
-  }
-
-  bookingUrl(name: string): string {
-    return `https://www.booking.com/searchresults.fr.html?ss=${encodeURIComponent(name + ', France')}`;
-  }
-
-  abritelUrl(name: string): string {
-    return `https://www.abritel.fr/search?q=${encodeURIComponent(name + ', France')}`;
   }
 
   formatKmFromMeters(meters: number): string {

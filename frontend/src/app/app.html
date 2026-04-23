@@ -33,14 +33,21 @@
       <div class="pointer-events-auto">
         <app-track-stats-panel
           [track]="track()"
-          (stageFocus)="onStageFocus($event)"
         ></app-track-stats-panel>
       </div>
       <div class="pointer-events-auto">
-        <app-track-weather-panel [forecasts]="weather()"></app-track-weather-panel>
+        <app-saved-tracks-panel (loadTrack)="onTrackReady($event)"></app-saved-tracks-panel>
+      </div>
+    </aside>
+    <aside class="pointer-events-none absolute right-4 top-4 flex w-72 flex-col gap-3">
+      <div class="pointer-events-auto">
+        <app-stages-panel
+          [stages]="track()?.stages ?? null"
+          (stageFocus)="onStageFocus($event)"
+        ></app-stages-panel>
       </div>
       <div class="pointer-events-auto">
-        <app-saved-tracks-panel (loadTrack)="onTrackReady($event)"></app-saved-tracks-panel>
+        <app-track-weather-panel [forecasts]="weather()"></app-track-weather-panel>
       </div>
     </aside>
   </main>
