@@ -2,13 +2,15 @@
 
 [![CI](https://github.com/ThibaudRolain/trek-fr/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ThibaudRolain/trek-fr/actions/workflows/ci.yml)
 
-App web de planification de treks en France : agrège trace GPX, GR, météo, refuges, POI et hébergements. Trois profils : pied, VTT, vélo route.
+App web de planification de treks en France : génère des traces GPX (aller-retour ou A→B), enrichit chaque sortie avec la météo, les points d'intérêt patrimoniaux et les infos de la ville d'arrivée. Trois profils : pied, VTT, vélo route.
+
+**Prod live** : <https://178-104-47-96.sslip.io>
 
 ## Stack
 
-- Backend : .NET 10 Web API (SOLID, architecture en couches)
-- Frontend : Angular 21 + MapLibre GL JS + Tailwind
-- DB : PostgreSQL 16 + PostGIS 3.4 (via Docker)
+- Backend : .NET 10 Web API (architecture en couches, SOLID)
+- Frontend : Angular 21 + MapLibre GL JS + Tailwind CSS
+- DB : PostgreSQL 16 + PostGIS 3.4 (Docker — dev local uniquement pour l'instant)
 
 ## Structure
 
@@ -16,12 +18,14 @@ App web de planification de treks en France : agrège trace GPX, GR, météo, re
 trek-fr/
 ├── backend/
 │   ├── TrekFr.sln
-│   ├── TrekFr.Api/             # Web API + DI composition root
-│   ├── TrekFr.Core/            # Domain, abstractions, use cases (no external deps)
-│   ├── TrekFr.Infrastructure/  # Providers externes (Open-Meteo, ORS, IGN, ...)
+│   ├── TrekFr.Api/             # Web API + composition root DI
+│   ├── TrekFr.Core/            # Domaine, abstractions, use cases (zéro dépendance externe)
+│   ├── TrekFr.Infrastructure/  # Providers externes (Open-Meteo, ORS, IGN, Wikidata…)
 │   └── TrekFr.Data/            # EF Core + PostGIS
 ├── frontend/                   # Angular workspace
-└── docker-compose.yml          # postgis service
+├── docker-compose.yml          # Dev local (postgis uniquement)
+├── docker-compose.prod.yml     # Prod VPS (postgis + backend + frontend + Caddy)
+└── Caddyfile                   # Reverse proxy + TLS Let's Encrypt automatique
 ```
 
 ## Sources de données (toutes gratuites)
@@ -29,26 +33,27 @@ trek-fr/
 | Usage | Source |
 |---|---|
 | Fond de carte | IGN Géoplateforme |
-| GR, POI, singles | OpenStreetMap via Overpass API |
-| Météo | Open-Meteo |
-| Refuges | refuges.info |
-| Élévation | IGN BDAlti |
 | Routing + round-trip | OpenRouteService (free tier) |
+| Météo | Open-Meteo |
+| Élévation | IGN BDAlti |
 | Geocoding | Nominatim (OSM) |
+| POI patrimoniaux | Wikidata SPARQL |
+| GR, POI, singles | OpenStreetMap via Overpass API |
+| Refuges | refuges.info |
 
-## Prérequis
+## Prérequis (dev local)
 
 - .NET 10 SDK
 - Node.js 20+ / Angular CLI 21+
-- Docker Desktop (pour PostgreSQL + PostGIS)
+- Docker Desktop (pour PostgreSQL + PostGIS local)
 
 ## Démarrage rapide
 
 ```bash
-# DB
+# DB locale
 docker compose up -d
 
-# Backend
+# Backend (copier appsettings.Development.json.example → appsettings.Development.json et renseigner ORS_API_KEY)
 cd backend
 dotnet run --project TrekFr.Api
 
@@ -57,84 +62,68 @@ cd frontend
 ng serve
 ```
 
-## Deploy
+Le proxy Angular (`proxy.conf.json`) route `/tracks/…` vers le backend local — pas besoin d'URL absolue dans `environment.ts`.
 
-### Vue d'ensemble
+## Deploy (VPS Hetzner)
 
-- **2 images Docker** multi-stage :
-  - `backend/Dockerfile` → .NET 10 SDK (build) + ASP.NET 10 (runtime), écoute HTTP sur `:8080`.
-  - `frontend/Dockerfile` → Node LTS (`ng build --configuration production`) + nginx:alpine (SPA fallback, listen `:8080`).
-- **docker-compose.yml** orchestre les 3 services (postgis + backend + frontend) en mode prod-like.
-- **Fly.io** : 2 apps distinctes, `fly.api.toml` et `fly.web.toml` à la racine.
+### Architecture prod
+
+4 conteneurs orchestrés par `docker-compose.prod.yml` :
+
+| Conteneur | Rôle |
+|---|---|
+| `postgis` | PostgreSQL 16 + PostGIS 3.4 |
+| `backend` | .NET 10 API, écoute HTTP `:8080` |
+| `frontend` | nginx sert le build Angular, écoute `:8080` |
+| `caddy` | Reverse proxy + TLS Let's Encrypt auto, ports 80/443 |
+
+Le VPS est un Hetzner (Ubuntu 22.04) à `root@178.104.47.96`. Le repo est cloné dans `/root/trek-fr`.
 
 ### Variables d'environnement
 
 | Var | Service | Rôle |
 |---|---|---|
-| `OpenRouteService__ApiKey` | backend | Clé API ORS (bind nested `.NET` via `__`). |
-| `ALLOWED_ORIGINS` | backend | Origines CORS autorisées en prod, séparées par `,`. Ex. `https://trek-fr-web.fly.dev`. |
+| `ORS_API_KEY` | backend | Clé API OpenRouteService. Dans `/root/trek-fr/.env` sur le VPS (chmod 600, jamais commitée). |
+| `ALLOWED_ORIGINS` | backend | Origines CORS autorisées. Défini dans `docker-compose.prod.yml`. |
 | `ASPNETCORE_ENVIRONMENT` | backend | `Production` en conteneur. |
-| `ASPNETCORE_URLS` | backend | `http://+:8080` en conteneur (TLS terminé par la plateforme). |
 
-L'URL publique du backend utilisée par le front est codée en dur dans `frontend/src/environments/environment.prod.ts` — remplacer le placeholder `REPLACE_WITH_BACKEND_URL` avant de builder l'image front.
-
-### Build & run locaux (prod-like)
+### Redéployer manuellement
 
 ```bash
-# Remplir la clé ORS avant de builder le backend
-export ORS_API_KEY=xxxxxxxx
-
-# Optionnel : remplir frontend/src/environments/environment.prod.ts avec
-# http://localhost:8080 si on veut que le front prod-buildé tape l'API locale.
-
-docker compose up --build
-# Front servi sur http://localhost:8081
-# API   servie sur http://localhost:8080
-# DB    postgis sur localhost:5432
+ssh root@178.104.47.96
+cd /root/trek-fr
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### Deploy Fly.io
+### Redéployer depuis Claude Code
 
-Prérequis : un compte Fly, le CLI `flyctl` authentifié.
+```
+/shiptoio
+```
+
+Le skill `/shiptoio` pousse la branche courante, se connecte au VPS, fait `git pull` et relance les conteneurs. Voir `.claude/skills/shiptoio/SKILL.md`.
+
+### Vérification post-deploy
 
 ```bash
-# Une seule fois : créer les apps (depuis la racine du repo)
-fly apps create trek-fr-api
-fly apps create trek-fr-web
-
-# Secrets backend
-fly secrets set OpenRouteService__ApiKey=<votre_cle_ORS> -c fly.api.toml
-fly secrets set ALLOWED_ORIGINS=https://trek-fr-web.fly.dev -c fly.api.toml
-
-# 1) Deploy backend
-fly deploy ./backend -c fly.api.toml
-
-# 2) Noter l'URL publique (ex. https://trek-fr-api.fly.dev),
-#    la recopier dans frontend/src/environments/environment.prod.ts,
-#    puis deploy frontend
-fly deploy ./frontend -c fly.web.toml
+curl https://api.178-104-47-96.sslip.io/health   # → {"status":"ok"}
+curl https://178-104-47-96.sslip.io/              # → 200 (frontend nginx)
 ```
 
-Post-deploy, vérifier les healthchecks :
+## Roadmap
 
-```bash
-curl https://trek-fr-api.fly.dev/health
-curl https://trek-fr-web.fly.dev/healthz
-```
+| # | Feature | État |
+|---|---|---|
+| 1 | Skeleton monorepo + stack | ✅ |
+| 2 | Générateur de trace (round-trip + A→B) | ✅ |
+| 3 | Sélection de candidats / ranking | ✅ |
+| 4 | Météo sur la trace | ✅ |
+| 5 | Destination A→B + infos ville d'arrivée (badges, Wikipedia) | ✅ |
+| 6 | POI le long du tracé (Overpass) | 🔜 |
+| 7 | Préférence type de voie (route / chemin / piste) | 🔜 |
+| 8 | Retour train/bus depuis la destination | 🔜 (bloqué GTFS local) |
+| 9 | Refuges + hébergements | 🔜 |
+| 10 | Multi-jours + étapes | 🔜 |
 
-> PostGIS n'est pas encore nécessaire en prod (cf. `memory/infra_docker.md`). Quand une slice en aura besoin, ajouter un Fly Postgres (`fly postgres create`) et injecter la connection string en secret.
-
-## Roadmap (slices)
-
-1. ✅ Skeleton monorepo + stack en place
-2. Upload GPX, affichage carte, stats (distance, D+/D-)
-3. Générateur de trace (formulaire → ORS round_trip)
-4. Ranking de candidats sur écart cible
-5. Météo sur la trace
-6. Refuges dans un buffer
-7. GR + POI (Overpass)
-8. Altimétrie IGN
-9. Deep-links hébergements
-10. Multi-jours + étapes
-
-Chaque slice = PR mergeable et démontable seule.
+Chaque feature livrée = PR mergeable et démontable seule.

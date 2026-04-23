@@ -11,6 +11,7 @@
       "Bash(git:*)",
       "Bash(docker:*)",
       "Bash(docker compose:*)",
+      "Bash(ssh *)",
       "Bash(ls:*)",
       "Bash(pwd)",
       "Bash(cat:*)",
