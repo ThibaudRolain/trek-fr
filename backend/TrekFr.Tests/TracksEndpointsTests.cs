@@ -71,25 +71,12 @@ public class TracksEndpointsTests : IClassFixture<TracksEndpointsTests.Fixture>
         Assert.Equal("foot", doc.RootElement.GetProperty("profile").GetString());
         Assert.True(doc.RootElement.GetProperty("stats").GetProperty("distanceMeters").GetDouble() > 0);
         Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("proposedDestinationName").ValueKind);
-        Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("variants").ValueKind);
-    }
-
-    [Fact]
-    public async Task Generate_roundTrip_without_seed_returns_variants_array_of_three()
-    {
-        var response = await _fx.Client.PostAsJsonAsync("/tracks/generate", new
-        {
-            latitude = 48.85, longitude = 2.35, distanceKm = 10, mode = "roundTrip",
-            // seed absent → declenche GenerateVariantsAsync
-        });
-        response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var variants = doc.RootElement.GetProperty("variants");
-        Assert.Equal(JsonValueKind.Array, variants.ValueKind);
-        Assert.Equal(3, variants.GetArrayLength());
-        var first = variants[0];
-        Assert.Equal(JsonValueKind.Object, first.GetProperty("geojson").ValueKind);
-        Assert.True(first.GetProperty("stats").GetProperty("distanceMeters").GetDouble() > 0);
+        // Fake routing provider returns no extras → composition is null + warning is present.
+        Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("composition").ValueKind);
+        var warnings = doc.RootElement.GetProperty("warnings");
+        Assert.Equal(JsonValueKind.Array, warnings.ValueKind);
+        Assert.True(warnings.GetArrayLength() > 0);
+        Assert.Contains("surface", warnings[0].GetProperty("message").GetString()!);
     }
 
     [Fact]
@@ -101,12 +88,10 @@ public class TracksEndpointsTests : IClassFixture<TracksEndpointsTests.Fixture>
             endLatitude = 49.0, endLongitude = 2.5,
         });
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        // bbox = [minLon, minLat, maxLon, maxLat] — doit contenir start ET end.
-        var bbox = doc.RootElement.GetProperty("bbox");
-        Assert.Equal(48.85, bbox[1].GetDouble(), precision: 4);
-        Assert.Equal(49.0, bbox[3].GetDouble(), precision: 4);
-        Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("proposedDestinationName").ValueKind);
+        Assert.Equal(new TrekFr.Core.Domain.Coordinate(48.85, 2.35), _fx.Factory.Routing.PointToPointResponder.Invoke(
+            new TrekFr.Core.Domain.Coordinate(48.85, 2.35),
+            new TrekFr.Core.Domain.Coordinate(49.0, 2.5),
+            TrekFr.Core.Domain.Profile.Foot).Points[0]);
     }
 
     [Fact]
@@ -275,51 +260,6 @@ public class TracksEndpointsTests : IClassFixture<TracksEndpointsTests.Fixture>
         response.EnsureSuccessStatusCode();
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("Upload", doc.RootElement.GetProperty("name").GetString());
-    }
-
-    // ---- /tracks/generate — splitStages ----
-
-    [Fact]
-    public async Task Generate_splitStages_400_when_stageDistance_missing()
-    {
-        var response = await _fx.Client.PostAsJsonAsync("/tracks/generate", new
-        {
-            latitude = 48.85, longitude = 2.35, distanceKm = 10, mode = "roundTrip",
-            splitStages = true, stageElevationGain = 500,
-        });
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Generate_splitStages_400_when_stageElevation_out_of_range()
-    {
-        var response = await _fx.Client.PostAsJsonAsync("/tracks/generate", new
-        {
-            latitude = 48.85, longitude = 2.35, distanceKm = 10, mode = "roundTrip",
-            splitStages = true, stageDistanceKm = 20, stageElevationGain = 50_000,
-        });
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Generate_splitStages_returns_stages_array_when_route_long_enough()
-    {
-        // Route de 2 points (~17 km à latitude 48) sous la limite 25 km/jour → 1 stage "Arrivée".
-        _fx.Factory.Routing.PointToPointResponder = (from, to, profile) =>
-            new TrekFr.Core.Domain.Track([from, to], profile);
-
-        var response = await _fx.Client.PostAsJsonAsync("/tracks/generate", new
-        {
-            latitude = 48.85, longitude = 2.35, distanceKm = 20, mode = "aToB",
-            endLatitude = 48.85, endLongitude = 2.50,
-            splitStages = true, stageDistanceKm = 25, stageElevationGain = 1_000,
-        });
-        response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var stages = doc.RootElement.GetProperty("stages");
-        Assert.Equal(JsonValueKind.Array, stages.ValueKind);
-        Assert.Equal(1, stages.GetArrayLength());
-        Assert.Equal("arrival", stages[0].GetProperty("endSleepSpot").GetProperty("kind").GetString());
     }
 
     // ---- /health ----

@@ -166,6 +166,13 @@ public static class TracksEndpoints
 
             IReadOnlyList<Stage>? stages = null;
             List<WarningDto>? warnings = null;
+
+            if (stats.Surface is null && stats.WayTypes is null)
+            {
+                warnings ??= [];
+                warnings.Add(new WarningDto("Données de surface et de type de voie non disponibles pour cette trace."));
+            }
+
             if (request.SplitStages)
             {
                 var opts = new StageOptions(
@@ -179,9 +186,10 @@ public static class TracksEndpoints
                 catch (NoStageSleepSpotException ex)
                 {
                     var nearest = communes.FindNearestWithDistance(ex.PivotLocation);
-                    warnings = nearest is null
-                        ? [new WarningDto(ex.Message)]
-                        : [new WarningDto(ex.Message, nearest.Value.Commune.Name, nearest.Value.DistanceMeters)];
+                    warnings ??= [];
+                    warnings.Add(nearest is null
+                        ? new WarningDto(ex.Message)
+                        : new WarningDto(ex.Message, nearest.Value.Commune.Name, nearest.Value.DistanceMeters));
                 }
             }
 

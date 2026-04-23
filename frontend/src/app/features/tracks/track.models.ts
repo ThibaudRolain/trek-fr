@@ -35,27 +35,15 @@ export interface WarningDto {
   nearbyPlaceDistanceMeters: number | null;
 }
 
-export interface DestinationInfo {
-  name: string;
-  monumentsHistoriques: number | null;
-  isPlusBeauVillage: boolean;
-  isVilleArtHistoire: boolean;
+export interface CompositionEntry {
+  typeId: number;
+  amount: number;
+  distance: number;
 }
 
-export interface PoiOnRoute {
-  communeName: string;
-  monumentCount: number;
-  latitude: number;
-  longitude: number;
-  distanceFromStartMeters: number;
-  distanceFromTrackMeters: number;
-}
-
-export interface TrackVariantDto {
-  geojson: Feature<LineString>;
-  bbox: [number, number, number, number] | null;
-  stats: TrackStats;
-  seed: number | null;
+export interface CompositionDto {
+  wayTypes: CompositionEntry[];
+  surface: CompositionEntry[];
 }
 
 export interface TrackResponse {
@@ -65,12 +53,10 @@ export interface TrackResponse {
   geojson: Feature<LineString>;
   bbox: [number, number, number, number] | null;
   proposedDestinationName: string | null;
-  destinationInfo: DestinationInfo | null;
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
   seed: number | null;
-  poisOnRoute: PoiOnRoute[] | null;
-  variants: TrackVariantDto[] | null;
+  composition: CompositionDto | null;
 }
 
 export interface LatLon {

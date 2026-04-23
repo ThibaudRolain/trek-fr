@@ -38,7 +38,7 @@ public class OpenRouteServiceRouterTests
         var handler = new FakeHttpHandler(_ => FakeHttpHandler.Json(TwoPointGeoJson));
         var router = RouterWith(handler);
 
-        var track = await router.RouteAsync(
+        var (track, _) = await router.RouteAsync(
             new Coordinate(48.85, 2.35),
             new Coordinate(48.87, 2.37),
             Profile.Foot);
@@ -119,7 +119,7 @@ public class OpenRouteServiceRouterTests
         });
         var router = RouterWith(handler);
 
-        var track = await router.GenerateRoundTripAsync(
+        var (track, _) = await router.GenerateRoundTripAsync(
             new Coordinate(48.85, 2.35), 15_000d, Profile.Foot, seed: 42);
 
         Assert.Equal(3, track.Points.Count);
@@ -127,6 +127,26 @@ public class OpenRouteServiceRouterTests
         Assert.Contains("\"round_trip\"", capturedBody);
         Assert.Contains("\"seed\":42", capturedBody);
         Assert.Contains("\"length\":15000", capturedBody);
+    }
+
+    [Fact]
+    public async Task GenerateRoundTripAsync_sends_extra_info_waytypes_and_surface()
+    {
+        string? capturedBody = null;
+        var handler = new FakeHttpHandler(req =>
+        {
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return FakeHttpHandler.Json(TwoPointGeoJson);
+        });
+        var router = RouterWith(handler);
+
+        await router.GenerateRoundTripAsync(
+            new Coordinate(48.85, 2.35), 15_000d, Profile.Foot, seed: 1);
+
+        Assert.NotNull(capturedBody);
+        Assert.Contains("extra_info", capturedBody);
+        Assert.Contains("waytype", capturedBody);
+        Assert.Contains("surface", capturedBody);
     }
 
     [Fact]
@@ -149,7 +169,7 @@ public class OpenRouteServiceRouterTests
         var handler = new FakeHttpHandler(_ => FakeHttpHandler.Json(body));
         var router = RouterWith(handler);
 
-        var track = await router.RouteAsync(
+        var (track, _) = await router.RouteAsync(
             new Coordinate(48.85, 2.35), new Coordinate(48.86, 2.36), Profile.Foot);
 
         Assert.Null(track.Points[0].Elevation);

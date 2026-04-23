@@ -28,24 +28,27 @@ public sealed class GenerateRoundTrip(IRoutingProvider router)
         var baseSeed = Random.Shared.Next();
         var results = new List<GeneratedTrack>(VariantCount);
 
-        // Premier appel avec la target brute pour mesurer l'overshoot local
-        var track0 = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
-        var stats0 = TrackStatsCalculator.Compute(track0);
+        var (track0, extras0) = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
+        var baseStats0 = TrackStatsCalculator.Compute(track0);
+        var stats0 = extras0 is not null
+            ? baseStats0 with { Surface = extras0.Surface, WayTypes = extras0.WayTypes }
+            : baseStats0;
         results.Add(new GeneratedTrack(track0, stats0, baseSeed));
 
         var deviation0 = Math.Abs(stats0.DistanceMeters - targetDistanceMeters) / targetDistanceMeters;
-        // Si ORS overshoot : cible corrigée = target²/actual (annule le ratio d'overshoot)
         var effectiveTarget = deviation0 > 0.15
             ? targetDistanceMeters * targetDistanceMeters / stats0.DistanceMeters
             : targetDistanceMeters;
 
-        // Variantes suivantes avec la target corrigée et des seeds différents
         for (int i = 1; i < VariantCount; i++)
         {
             await Task.Delay(300, ct);
             var seed = baseSeed + i;
-            var track = await router.GenerateRoundTripAsync(start, effectiveTarget, profile, seed, ct);
-            var stats = TrackStatsCalculator.Compute(track);
+            var (track, extras) = await router.GenerateRoundTripAsync(start, effectiveTarget, profile, seed, ct);
+            var baseStats = TrackStatsCalculator.Compute(track);
+            var stats = extras is not null
+                ? baseStats with { Surface = extras.Surface, WayTypes = extras.WayTypes }
+                : baseStats;
             results.Add(new GeneratedTrack(track, stats, seed));
         }
 
@@ -71,18 +74,27 @@ public sealed class GenerateRoundTrip(IRoutingProvider router)
 
         if (elevationFilter is null || !elevationFilter.IsActive)
         {
-            var track = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
-            return new GeneratedTrack(track, TrackStatsCalculator.Compute(track), baseSeed);
+            var (track, extras) = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
+            var baseStats = TrackStatsCalculator.Compute(track);
+            var stats = extras is not null
+                ? baseStats with { Surface = extras.Surface, WayTypes = extras.WayTypes }
+                : baseStats;
+            return new GeneratedTrack(track, stats, baseSeed);
         }
 
         for (int i = 0; i < MaxElevationFilterAttempts; i++)
         {
             if (i > 0) await Task.Delay(500, ct);
             var attemptSeed = baseSeed + i;
-            var track = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, attemptSeed, ct);
-            var stats = TrackStatsCalculator.Compute(track);
-            if (elevationFilter.Matches(stats.ElevationGainMeters))
+            var (track, extras) = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, attemptSeed, ct);
+            var baseStats = TrackStatsCalculator.Compute(track);
+            if (elevationFilter.Matches(baseStats.ElevationGainMeters))
+            {
+                var stats = extras is not null
+                    ? baseStats with { Surface = extras.Surface, WayTypes = extras.WayTypes }
+                    : baseStats;
                 return new GeneratedTrack(track, stats, attemptSeed);
+            }
         }
 
         throw new ElevationOutOfRangeException(elevationFilter, "un round-trip à cette distance");
