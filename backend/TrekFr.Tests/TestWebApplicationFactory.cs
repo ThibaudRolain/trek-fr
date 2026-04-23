@@ -102,4 +102,9 @@ public sealed class FakeDestinationProposer : IDestinationProposer
     public Task<ProposedDestination?> ProposeAsync(
         Coordinate start, double targetDistanceMeters, Profile profile, int? seed, CancellationToken ct = default) =>
         Task.FromResult(Destination);
+
+    public Task<IReadOnlyList<ProposedDestination>> GetTopCandidatesAsync(
+        Coordinate start, double targetDistanceMeters, Profile profile, int topN, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ProposedDestination>>(
+            Destination is null ? [] : [Destination]);
 }

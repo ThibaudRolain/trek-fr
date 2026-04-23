@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(AngularDevCors, policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins("http://localhost:4200", "http://localhost:4204")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });

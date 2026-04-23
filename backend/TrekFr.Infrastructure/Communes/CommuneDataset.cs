@@ -88,4 +88,7 @@ public sealed record CommuneEntry(
     [property: JsonPropertyName("lat")] double Lat,
     [property: JsonPropertyName("lon")] double Lon,
     [property: JsonPropertyName("pop")] int Population,
-    [property: JsonPropertyName("score")] double Score);
+    [property: JsonPropertyName("score")] double Score,
+    [property: JsonPropertyName("mh")] int? MonumentsHistoriques = null,
+    [property: JsonPropertyName("pbv")] bool IsPlusBeauVillage = false,
+    [property: JsonPropertyName("vah")] bool IsVilleArtHistoire = false);
