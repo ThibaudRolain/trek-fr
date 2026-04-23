@@ -1,5 +1,5 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
-import type { CompositionDto, CompositionEntry, StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import type { CompositionDto, CompositionEntry, DestinationInfo, StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
 import { SavedTracksService } from './saved-tracks.service';
 
 const WAYTYPE_LABELS: Record<number, string> = {
@@ -70,7 +70,33 @@ const BAR_COLORS_SURFACE: Record<number, string> = {
           <h2 class="font-medium text-slate-100">{{ t.name ?? 'Trace générée' }}</h2>
           <span class="text-xs uppercase tracking-wide text-slate-400">{{ t.profile }}</span>
         </div>
-        @if (t.proposedDestinationName; as dest) {
+        @if (destinationInfo(); as info) {
+          <div class="mb-2 overflow-hidden rounded-md border border-slate-800">
+            @if (heroImageUrl(); as imgUrl) {
+              <img [src]="imgUrl" [alt]="info.name" class="h-24 w-full object-cover">
+            }
+            <div class="px-2 py-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-medium text-slate-100">{{ info.name }}</span>
+                <a [href]="wikipediaUrl(info.name)" target="_blank" rel="noopener" class="text-[10px] text-sky-400 hover:text-sky-300">Wikipedia →</a>
+              </div>
+              <div class="mt-1 flex flex-wrap gap-1">
+                @if (info.isPlusBeauVillage) {
+                  <span class="rounded bg-amber-900/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-200 ring-1 ring-amber-700/50">Plus Beau Village ✦</span>
+                }
+                @if (info.isVilleArtHistoire) {
+                  <span class="rounded bg-sky-900/60 px-1.5 py-0.5 text-[10px] font-medium text-sky-200 ring-1 ring-sky-700/50">Ville d'art et d'histoire</span>
+                }
+                @if (info.monumentsHistoriques != null && info.monumentsHistoriques > 0) {
+                  <span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300 ring-1 ring-slate-700">{{ info.monumentsHistoriques }} MH</span>
+                }
+                @if (!info.isPlusBeauVillage && !info.isVilleArtHistoire && (info.monumentsHistoriques == null || info.monumentsHistoriques === 0)) {
+                  <span class="text-[10px] text-slate-500">Pas de label patrimonial</span>
+                }
+              </div>
+            </div>
+          </div>
+        } @else if (t.proposedDestinationName; as dest) {
           <p class="mb-2 text-xs text-slate-400">
             Arrivée proposée :
             <span class="font-medium text-slate-100">{{ dest }}</span>
@@ -267,8 +293,25 @@ export class TrackStatsPanelComponent {
   readonly track = input<TrackResponse | null>(null);
   readonly stageFocus = output<[number, number, number, number]>();
   readonly justSaved = signal(false);
+  readonly heroImageUrl = signal<string | null>(null);
 
   readonly stages = computed(() => this.track()?.stages ?? null);
+  readonly destinationInfo = computed<DestinationInfo | null>(() => this.track()?.destinationInfo ?? null);
+
+  constructor() {
+    effect(() => {
+      const info = this.destinationInfo();
+      if (!info) { this.heroImageUrl.set(null); return; }
+      fetch(`https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(info.name)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => this.heroImageUrl.set(data?.thumbnail?.source ?? null))
+        .catch(() => this.heroImageUrl.set(null));
+    });
+  }
+
+  wikipediaUrl(name: string): string {
+    return `https://fr.wikipedia.org/wiki/${encodeURIComponent(name)}`;
+  }
 
   formatKm(stats: TrackStats): string {
     return (stats.distanceMeters / 1000).toFixed(2);
