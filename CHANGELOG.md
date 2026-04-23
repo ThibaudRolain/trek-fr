@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-23
 
+### Added — Waytypes/Surface breakdown (feature/waytypes)
+
+Décomposition de la trace par type de voie et surface via ORS `extra_info=["waytype","surface"]`. Backend : `TrackExtras` + `TrackStats.Surface/WayTypes`, `IRoutingProvider` retourne des tuples, `CompositionDto` dans `TrackResponse`. Front : barre empilée Tailwind + labels FR (waytypes 0–8, surface 0–13). Si ORS ne retourne pas les extras → `warnings[]`, jamais 400.
+
+**Doc détaillée** : [`docs/merges/2026-04-23-waytypes.md`](docs/merges/2026-04-23-waytypes.md) • **Merge** : `4d073ff`
+
 ### Added — POI Mérimée le long du trace (feature/poi-on-route)
 
 Slice 1 POI on route : communes traversées avec monuments historiques (données Mérimée locales, zéro requête réseau). Marqueurs amber sur la carte + panneau "Patrimoine" collapsible dans la sidebar. Backend : `IMhPoiProvider` / `MhPoiProvider` (buffer 2 km, max 20), `PoiOnRouteDto` dans `TrackResponse`. Échec provider → `warnings[]`, jamais 400.
