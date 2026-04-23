@@ -46,6 +46,29 @@ export interface CompositionDto {
   surface: CompositionEntry[];
 }
 
+export interface DestinationInfo {
+  name: string;
+  monumentsHistoriques: number | null;
+  isPlusBeauVillage: boolean;
+  isVilleArtHistoire: boolean;
+}
+
+export interface PoiOnRoute {
+  communeName: string;
+  monumentCount: number;
+  latitude: number;
+  longitude: number;
+  distanceFromStartMeters: number;
+  distanceFromTrackMeters: number;
+}
+
+export interface TrackVariantDto {
+  geojson: Feature<LineString>;
+  bbox: [number, number, number, number] | null;
+  stats: TrackStats;
+  seed: number | null;
+}
+
 export interface TrackResponse {
   name: string | null;
   profile: TrackProfile;
@@ -53,10 +76,13 @@ export interface TrackResponse {
   geojson: Feature<LineString>;
   bbox: [number, number, number, number] | null;
   proposedDestinationName: string | null;
+  destinationInfo: DestinationInfo | null;
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
   seed: number | null;
+  poisOnRoute: PoiOnRoute[] | null;
   composition: CompositionDto | null;
+  variants: TrackVariantDto[] | null;
 }
 
 export interface LatLon {
