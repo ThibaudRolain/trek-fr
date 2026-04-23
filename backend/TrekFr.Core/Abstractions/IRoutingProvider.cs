@@ -6,14 +6,14 @@ namespace TrekFr.Core.Abstractions;
 
 public interface IRoutingProvider
 {
-    Task<Track> GenerateRoundTripAsync(
+    Task<(Track Track, TrackExtras? Extras)> GenerateRoundTripAsync(
         Coordinate start,
         double targetDistanceMeters,
         Profile profile,
         int? seed = null,
         CancellationToken ct = default);
 
-    Task<Track> RouteAsync(
+    Task<(Track Track, TrackExtras? Extras)> RouteAsync(
         Coordinate from,
         Coordinate to,
         Profile profile,

@@ -25,8 +25,12 @@ public sealed class ProposeDestination(IDestinationProposer proposer, IRoutingPr
             var dest = await proposer.ProposeAsync(start, targetDistanceMeters, profile, effectiveSeed, ct)
                 ?? throw new NoDestinationCandidateException(
                     $"Aucune ville candidate dans le rayon {targetDistanceMeters / 1000d:F0} km (±10 %). Essaie une autre distance ou un autre point de départ.");
-            var track = await router.RouteAsync(start, dest.Location, profile, ct);
-            return new ProposedGeneratedTrack(track, TrackStatsCalculator.Compute(track), dest, effectiveSeed);
+            var (track, extras) = await router.RouteAsync(start, dest.Location, profile, ct);
+            var baseStats = TrackStatsCalculator.Compute(track);
+            var stats = extras is not null
+                ? baseStats with { Surface = extras.Surface, WayTypes = extras.WayTypes }
+                : baseStats;
+            return new ProposedGeneratedTrack(track, stats, dest, effectiveSeed);
         }
 
         var candidates = await proposer.GetTopCandidatesAsync(start, targetDistanceMeters, profile, FilterIterationTopN, ct);
@@ -38,10 +42,15 @@ public sealed class ProposeDestination(IDestinationProposer proposer, IRoutingPr
 
         foreach (var dest in candidates)
         {
-            var track = await router.RouteAsync(start, dest.Location, profile, ct);
-            var stats = TrackStatsCalculator.Compute(track);
-            if (elevationFilter.Matches(stats.ElevationGainMeters))
+            var (track, extras) = await router.RouteAsync(start, dest.Location, profile, ct);
+            var baseStats = TrackStatsCalculator.Compute(track);
+            if (elevationFilter.Matches(baseStats.ElevationGainMeters))
+            {
+                var stats = extras is not null
+                    ? baseStats with { Surface = extras.Surface, WayTypes = extras.WayTypes }
+                    : baseStats;
                 return new ProposedGeneratedTrack(track, stats, dest, effectiveSeed);
+            }
         }
         throw new ElevationOutOfRangeException(
             elevationFilter,

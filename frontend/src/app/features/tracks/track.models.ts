@@ -35,6 +35,17 @@ export interface WarningDto {
   nearbyPlaceDistanceMeters: number | null;
 }
 
+export interface CompositionEntry {
+  typeId: number;
+  amount: number;
+  distance: number;
+}
+
+export interface CompositionDto {
+  wayTypes: CompositionEntry[];
+  surface: CompositionEntry[];
+}
+
 export interface TrackResponse {
   name: string | null;
   profile: TrackProfile;
@@ -45,6 +56,7 @@ export interface TrackResponse {
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
   seed: number | null;
+  composition: CompositionDto | null;
 }
 
 export interface LatLon {

@@ -42,8 +42,8 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 public sealed class FakeRoutingProvider : IRoutingProvider
 {
     public Func<Coordinate, double, Profile, int?, Track> RoundTripResponder { get; set; } =
-        (start, _, profile, _) => new Track(
-            [start, new Coordinate(start.Latitude + 0.01, start.Longitude, 100), start],
+        (start, dist, profile, _) => new Track(
+            [start, new Coordinate(start.Latitude + dist / 222_222d, start.Longitude, 100), start],
             profile);
 
     public Func<Coordinate, Coordinate, Profile, Track> PointToPointResponder { get; set; } =
@@ -51,17 +51,17 @@ public sealed class FakeRoutingProvider : IRoutingProvider
 
     public Exception? ThrowOnCall { get; set; }
 
-    public Task<Track> GenerateRoundTripAsync(
+    public Task<(Track Track, TrackExtras? Extras)> GenerateRoundTripAsync(
         Coordinate start, double targetDistanceMeters, Profile profile, int? seed = null, CancellationToken ct = default)
     {
         if (ThrowOnCall is not null) throw ThrowOnCall;
-        return Task.FromResult(RoundTripResponder(start, targetDistanceMeters, profile, seed));
+        return Task.FromResult<(Track, TrackExtras?)>((RoundTripResponder(start, targetDistanceMeters, profile, seed), null));
     }
 
-    public Task<Track> RouteAsync(Coordinate from, Coordinate to, Profile profile, CancellationToken ct = default)
+    public Task<(Track Track, TrackExtras? Extras)> RouteAsync(Coordinate from, Coordinate to, Profile profile, CancellationToken ct = default)
     {
         if (ThrowOnCall is not null) throw ThrowOnCall;
-        return Task.FromResult(PointToPointResponder(from, to, profile));
+        return Task.FromResult<(Track, TrackExtras?)>((PointToPointResponder(from, to, profile), null));
     }
 }
 
@@ -102,4 +102,9 @@ public sealed class FakeDestinationProposer : IDestinationProposer
     public Task<ProposedDestination?> ProposeAsync(
         Coordinate start, double targetDistanceMeters, Profile profile, int? seed, CancellationToken ct = default) =>
         Task.FromResult(Destination);
+
+    public Task<IReadOnlyList<ProposedDestination>> GetTopCandidatesAsync(
+        Coordinate start, double targetDistanceMeters, Profile profile, int topN, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ProposedDestination>>(
+            Destination is null ? [] : [Destination]);
 }

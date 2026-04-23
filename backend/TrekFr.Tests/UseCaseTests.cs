@@ -23,22 +23,32 @@ public class UseCaseTests
         public Func<Track>? RoundTripTrack { get; set; }
         public Func<Track>? PointToPointTrack { get; set; }
 
-        public Task<Track> GenerateRoundTripAsync(
+        public Task<(Track Track, TrackExtras? Extras)> GenerateRoundTripAsync(
             Coordinate start, double targetDistanceMeters, Profile profile, int? seed = null, CancellationToken ct = default)
         {
             LastStart = start;
             LastDistance = targetDistanceMeters;
             LastSeed = seed;
             LastProfile = profile;
-            return Task.FromResult(RoundTripTrack?.Invoke() ?? DefaultTrack(profile));
+            var track = RoundTripTrack?.Invoke() ?? DefaultRoundTrip(start, targetDistanceMeters, profile);
+            return Task.FromResult<(Track, TrackExtras?)>((track, null));
         }
 
-        public Task<Track> RouteAsync(Coordinate from, Coordinate to, Profile profile, CancellationToken ct = default)
+        private static Track DefaultRoundTrip(Coordinate start, double distanceMeters, Profile p) => new(
+            new List<Coordinate>
+            {
+                start,
+                new(start.Latitude + distanceMeters / 222_222d, start.Longitude, 100),
+                start,
+            },
+            p);
+
+        public Task<(Track Track, TrackExtras? Extras)> RouteAsync(Coordinate from, Coordinate to, Profile profile, CancellationToken ct = default)
         {
             LastFrom = from;
             LastTo = to;
             LastProfile = profile;
-            return Task.FromResult(PointToPointTrack?.Invoke() ?? DefaultTrack(profile));
+            return Task.FromResult<(Track, TrackExtras?)>((PointToPointTrack?.Invoke() ?? DefaultTrack(profile), null));
         }
 
         private static Track DefaultTrack(Profile p) => new(
@@ -64,6 +74,11 @@ public class UseCaseTests
             LastSeed = seed;
             return Task.FromResult<ProposedDestination?>(destination);
         }
+
+        public Task<IReadOnlyList<ProposedDestination>> GetTopCandidatesAsync(
+            Coordinate start, double targetDistanceMeters, Profile profile, int topN, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ProposedDestination>>(
+                destination is null ? [] : [destination]);
     }
 
     // ---- RouteAToB ----

@@ -51,17 +51,16 @@ Print "Ports: API=... Front=..." back to the user so they know which worktree wi
 
    Capture the task ID. Note : the port used is whatever launchSettings.json says — `API_PORT` was only extracted to tell us where to curl later.
 
-4. **Regenerate `frontend/src/environments/environment.ts`** so the front points to THIS worktree's backend (and not some sibling's). Idempotent :
+4. **Regenerate `frontend/src/environments/environment.ts`** with `apiBase: ''` (empty string). The Angular proxy (proxy.conf.json) handles routing `/tracks/...` to the correct backend port — using an absolute URL here would bypass the proxy and trigger a CORS block in the browser. Idempotent :
 
    ```bash
-   cat > frontend/src/environments/environment.ts <<EOF
-   // Auto-regénéré par le skill /restart — ne pas éditer à la main.
-   // Source : backend/TrekFr.Api/Properties/launchSettings.json du worktree.
-   export const environment = {
-     production: false,
-     apiBase: 'http://localhost:$API_PORT',
-   };
-   EOF
+   cat > frontend/src/environments/environment.ts <<'EOF'
+// Auto-regénéré par le skill /restart — ne pas éditer à la main.
+export const environment = {
+  production: false,
+  apiBase: '',
+};
+EOF
    ```
 
 5. **Start the frontend in the background.** Use Bash with `run_in_background: true`:

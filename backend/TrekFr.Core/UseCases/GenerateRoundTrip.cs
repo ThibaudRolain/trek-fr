@@ -45,23 +45,26 @@ public sealed class GenerateRoundTrip(IRoutingProvider router)
         for (int i = 0; i < MaxAttempts; i++)
         {
             var attemptSeed = baseSeed + i;
-            var track = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, attemptSeed, ct);
-            var stats = TrackStatsCalculator.Compute(track);
+            var (track, extras) = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, attemptSeed, ct);
+            var baseStats = TrackStatsCalculator.Compute(track);
 
-            if (!IsDistanceInTolerance(stats.DistanceMeters, targetDistanceMeters))
+            if (!IsDistanceInTolerance(baseStats.DistanceMeters, targetDistanceMeters))
             {
                 distanceMismatchCount++;
                 if (bestDistanceSoFar is null ||
-                    Math.Abs(stats.DistanceMeters - targetDistanceMeters) < Math.Abs(bestDistanceSoFar.Value - targetDistanceMeters))
+                    Math.Abs(baseStats.DistanceMeters - targetDistanceMeters) < Math.Abs(bestDistanceSoFar.Value - targetDistanceMeters))
                 {
-                    bestDistanceSoFar = stats.DistanceMeters;
+                    bestDistanceSoFar = baseStats.DistanceMeters;
                 }
                 continue;
             }
-            if (!filter.Matches(stats.ElevationGainMeters))
+            if (!filter.Matches(baseStats.ElevationGainMeters))
             {
                 continue;
             }
+            var stats = extras is not null
+                ? baseStats with { Surface = extras.Surface, WayTypes = extras.WayTypes }
+                : baseStats;
             return new GeneratedTrack(track, stats, attemptSeed);
         }
 

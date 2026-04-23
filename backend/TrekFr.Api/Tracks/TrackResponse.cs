@@ -14,7 +14,8 @@ public sealed record TrackResponse(
     string? ProposedDestinationName,
     IReadOnlyList<StageDto>? Stages,
     IReadOnlyList<WarningDto>? Warnings,
-    int? Seed)
+    int? Seed,
+    CompositionDto? Composition)
 {
     public static TrackResponse From(
         Track track,
@@ -34,7 +35,8 @@ public sealed record TrackResponse(
             proposedDestinationName,
             stages?.Select(s => StageDto.From(s, profile)).ToList(),
             warnings,
-            seed);
+            seed,
+            CompositionDto.From(stats));
     }
 
     public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
@@ -97,6 +99,21 @@ public sealed record TrackStatsDto(
         s.ElevationLossMeters,
         s.EstimatedDuration.TotalSeconds);
 }
+
+public sealed record CompositionDto(
+    IReadOnlyList<CompositionEntry> WayTypes,
+    IReadOnlyList<CompositionEntry> Surface)
+{
+    public static CompositionDto? From(TrackStats stats)
+    {
+        if (stats.WayTypes is null && stats.Surface is null) return null;
+        return new CompositionDto(
+            (stats.WayTypes ?? []).Select(e => new CompositionEntry(e.TypeId, e.Amount, e.Distance)).ToList(),
+            (stats.Surface ?? []).Select(e => new CompositionEntry(e.TypeId, e.Amount, e.Distance)).ToList());
+    }
+}
+
+public sealed record CompositionEntry(int TypeId, double Amount, double Distance);
 
 public sealed record StageDto(
     int Index,

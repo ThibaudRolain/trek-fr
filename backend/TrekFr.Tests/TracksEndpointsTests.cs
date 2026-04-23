@@ -71,6 +71,12 @@ public class TracksEndpointsTests : IClassFixture<TracksEndpointsTests.Fixture>
         Assert.Equal("foot", doc.RootElement.GetProperty("profile").GetString());
         Assert.True(doc.RootElement.GetProperty("stats").GetProperty("distanceMeters").GetDouble() > 0);
         Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("proposedDestinationName").ValueKind);
+        // Fake routing provider returns no extras → composition is null + warning is present.
+        Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("composition").ValueKind);
+        var warnings = doc.RootElement.GetProperty("warnings");
+        Assert.Equal(JsonValueKind.Array, warnings.ValueKind);
+        Assert.True(warnings.GetArrayLength() > 0);
+        Assert.Contains("surface", warnings[0].GetProperty("message").GetString()!);
     }
 
     [Fact]

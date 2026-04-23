@@ -23,7 +23,7 @@ public sealed class OpenRouteServiceRouter(
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public async Task<Track> GenerateRoundTripAsync(
+    public async Task<(Track Track, TrackExtras? Extras)> GenerateRoundTripAsync(
         Coordinate start,
         double targetDistanceMeters,
         Profile profile,
@@ -35,6 +35,7 @@ public sealed class OpenRouteServiceRouter(
         {
             Coordinates = [[start.Longitude, start.Latitude]],
             Elevation = true,
+            ExtraInfo = ["waytype", "surface"],
             Options = new OrsOptions
             {
                 RoundTrip = new OrsRoundTrip
@@ -55,7 +56,7 @@ public sealed class OpenRouteServiceRouter(
         return await SendAndParseAsync(msg, profile, "round_trip", ct);
     }
 
-    public async Task<Track> RouteAsync(
+    public async Task<(Track Track, TrackExtras? Extras)> RouteAsync(
         Coordinate from,
         Coordinate to,
         Profile profile,
@@ -70,6 +71,7 @@ public sealed class OpenRouteServiceRouter(
                 [to.Longitude, to.Latitude],
             ],
             Elevation = true,
+            ExtraInfo = ["waytype", "surface"],
         };
 
         using var msg = new HttpRequestMessage(HttpMethod.Post, $"/v2/directions/{orsProfile}/geojson")
@@ -81,7 +83,7 @@ public sealed class OpenRouteServiceRouter(
         return await SendAndParseAsync(msg, profile, "point-to-point", ct);
     }
 
-    private async Task<Track> SendAndParseAsync(
+    private async Task<(Track Track, TrackExtras? Extras)> SendAndParseAsync(
         HttpRequestMessage msg, Profile profile, string operation, CancellationToken ct)
     {
         using var response = await http.SendAsync(msg, ct);
@@ -107,7 +109,33 @@ public sealed class OpenRouteServiceRouter(
             double? elevation = c.Count >= 3 ? c[2] : null;
             points.Add(new Coordinate(c[1], c[0], elevation));
         }
-        return new Track(points, profile);
+
+        var extras = ParseExtras(feature.Properties);
+        return (new Track(points, profile), extras);
+    }
+
+    public static TrackExtras? ParseExtras(OrsProperties? properties)
+    {
+        if (properties?.Extras is null) return null;
+
+        var surface = ParseSummary<SurfaceEntry>(properties.Extras, "surface",
+            e => new SurfaceEntry((int)e.Value, e.Amount, e.Distance));
+        var waytypes = ParseSummary<WayTypeEntry>(properties.Extras, "waytype",
+            e => new WayTypeEntry((int)e.Value, e.Amount, e.Distance));
+
+        if (surface is null && waytypes is null) return null;
+        return new TrackExtras(surface, waytypes);
+    }
+
+    private static List<T>? ParseSummary<T>(
+        Dictionary<string, OrsExtraData> extras, string key, Func<OrsSummaryEntry, T> map)
+    {
+        if (!extras.TryGetValue(key, out var data)) return null;
+        if (data.Summary is not { Count: > 0 }) return null;
+
+        var result = new List<T>(data.Summary.Count);
+        foreach (var e in data.Summary) result.Add(map(e));
+        return result;
     }
 
     /// <summary>
@@ -123,7 +151,7 @@ public sealed class OpenRouteServiceRouter(
         try
         {
             using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.TryGetProperty("error", out var error))
+            if (doc.RootElement.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object)
             {
                 int? code = error.TryGetProperty("code", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : null;
                 var message = error.TryGetProperty("message", out var m) ? m.GetString() : null;
@@ -166,6 +194,9 @@ public sealed class OpenRouteServiceRouter(
         [JsonPropertyName("elevation")]
         public bool Elevation { get; init; }
 
+        [JsonPropertyName("extra_info")]
+        public string[]? ExtraInfo { get; init; }
+
         [JsonPropertyName("options")]
         public OrsOptions? Options { get; init; }
     }
@@ -198,6 +229,9 @@ public sealed class OpenRouteServiceRouter(
     {
         [JsonPropertyName("geometry")]
         public OrsGeometry? Geometry { get; init; }
+
+        [JsonPropertyName("properties")]
+        public OrsProperties? Properties { get; init; }
     }
 
     private sealed class OrsGeometry
@@ -205,6 +239,30 @@ public sealed class OpenRouteServiceRouter(
         [JsonPropertyName("coordinates")]
         public List<List<double>>? Coordinates { get; init; }
     }
+}
+
+public sealed class OrsProperties
+{
+    [JsonPropertyName("extras")]
+    public Dictionary<string, OrsExtraData>? Extras { get; init; }
+}
+
+public sealed class OrsExtraData
+{
+    [JsonPropertyName("summary")]
+    public List<OrsSummaryEntry>? Summary { get; init; }
+}
+
+public sealed class OrsSummaryEntry
+{
+    [JsonPropertyName("value")]
+    public double Value { get; init; }
+
+    [JsonPropertyName("amount")]
+    public double Amount { get; init; }
+
+    [JsonPropertyName("distance")]
+    public double Distance { get; init; }
 }
 
 public sealed class OpenRouteServiceException(string message) : Exception(message);

@@ -1,6 +1,64 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import type { StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
+import type { CompositionDto, CompositionEntry, StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
 import { SavedTracksService } from './saved-tracks.service';
+
+const WAYTYPE_LABELS: Record<number, string> = {
+  0: 'Autre',
+  1: 'Route nationale',
+  2: 'Route',
+  3: 'Rue',
+  4: 'Sentier',
+  5: 'Piste',
+  6: 'Piste cyclable',
+  7: 'Chemin agricole',
+  8: 'Escaliers',
+};
+
+const SURFACE_LABELS: Record<number, string> = {
+  0: 'Autre',
+  1: 'Asphalte',
+  2: 'Béton',
+  3: 'Pavé (irrégulier)',
+  4: 'Pavé',
+  5: 'Gravier',
+  6: 'Terre',
+  7: 'Herbe',
+  8: 'Sable',
+  9: 'Bois',
+  10: 'Pierre',
+  11: 'Sel',
+  12: 'Neige',
+  13: 'Glace',
+};
+
+const BAR_COLORS_WAYTYPE: Record<number, string> = {
+  0: '#64748b',
+  1: '#dc2626',
+  2: '#f97316',
+  3: '#facc15',
+  4: '#22c55e',
+  5: '#86efac',
+  6: '#38bdf8',
+  7: '#a78bfa',
+  8: '#f472b6',
+};
+
+const BAR_COLORS_SURFACE: Record<number, string> = {
+  0: '#64748b',
+  1: '#6b7280',
+  2: '#9ca3af',
+  3: '#d97706',
+  4: '#b45309',
+  5: '#a16207',
+  6: '#65a30d',
+  7: '#16a34a',
+  8: '#ca8a04',
+  9: '#78350f',
+  10: '#1e293b',
+  11: '#e2e8f0',
+  12: '#bae6fd',
+  13: '#7dd3fc',
+};
 
 @Component({
   selector: 'app-track-stats-panel',
@@ -74,6 +132,53 @@ import { SavedTracksService } from './saved-tracks.service';
           <dt class="text-slate-400">Durée estimée</dt>
           <dd class="text-right font-mono text-slate-100">{{ formatDuration(t.stats) }}</dd>
         </dl>
+
+        @if (t.composition; as comp) {
+          <div class="mt-3 border-t border-slate-800 pt-2">
+            @if (comp.wayTypes.length > 0) {
+              <p class="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">Type de voie</p>
+              <div class="mb-1 flex h-3 w-full overflow-hidden rounded-sm">
+                @for (entry of sortedEntries(comp.wayTypes); track entry.typeId) {
+                  <div
+                    [style.width.%]="entry.amount"
+                    [style.background-color]="waytypeColor(entry.typeId)"
+                    [title]="waytypeLabel(entry.typeId) + ' ' + entry.amount.toFixed(1) + '%'"
+                  ></div>
+                }
+              </div>
+              <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+                @for (entry of sortedEntries(comp.wayTypes); track entry.typeId) {
+                  <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    <span class="inline-block h-2 w-2 rounded-sm" [style.background-color]="waytypeColor(entry.typeId)"></span>
+                    {{ waytypeLabel(entry.typeId) }}
+                    <span class="font-mono text-slate-500">{{ entry.amount.toFixed(0) }}%</span>
+                  </span>
+                }
+              </div>
+            }
+            @if (comp.surface.length > 0) {
+              <p class="mb-1 mt-2 text-[10px] font-medium uppercase tracking-wide text-slate-400">Surface</p>
+              <div class="mb-1 flex h-3 w-full overflow-hidden rounded-sm">
+                @for (entry of sortedEntries(comp.surface); track entry.typeId) {
+                  <div
+                    [style.width.%]="entry.amount"
+                    [style.background-color]="surfaceColor(entry.typeId)"
+                    [title]="surfaceLabel(entry.typeId) + ' ' + entry.amount.toFixed(1) + '%'"
+                  ></div>
+                }
+              </div>
+              <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+                @for (entry of sortedEntries(comp.surface); track entry.typeId) {
+                  <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                    <span class="inline-block h-2 w-2 rounded-sm" [style.background-color]="surfaceColor(entry.typeId)"></span>
+                    {{ surfaceLabel(entry.typeId) }}
+                    <span class="font-mono text-slate-500">{{ entry.amount.toFixed(0) }}%</span>
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
 
         @if (stages(); as stages) {
           <div class="mt-3 border-t border-slate-800 pt-2">
@@ -196,6 +301,26 @@ export class TrackStatsPanelComponent {
     const spot = stage.endSleepSpot;
     if (spot.kind === 'town' || spot.kind === 'refuge') return true;
     return spot.kind === 'arrival' && spot.name !== 'Arrivée';
+  }
+
+  sortedEntries(entries: CompositionEntry[]): CompositionEntry[] {
+    return [...entries].sort((a, b) => b.amount - a.amount);
+  }
+
+  waytypeLabel(typeId: number): string {
+    return WAYTYPE_LABELS[typeId] ?? `Type ${typeId}`;
+  }
+
+  surfaceLabel(typeId: number): string {
+    return SURFACE_LABELS[typeId] ?? `Surface ${typeId}`;
+  }
+
+  waytypeColor(typeId: number): string {
+    return BAR_COLORS_WAYTYPE[typeId] ?? '#64748b';
+  }
+
+  surfaceColor(typeId: number): string {
+    return BAR_COLORS_SURFACE[typeId] ?? '#64748b';
   }
 
   airbnbUrl(name: string): string {
