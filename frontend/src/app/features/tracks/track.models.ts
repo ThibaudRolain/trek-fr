@@ -35,6 +35,13 @@ export interface WarningDto {
   nearbyPlaceDistanceMeters: number | null;
 }
 
+export interface DestinationInfo {
+  name: string;
+  monumentsHistoriques: number | null;
+  isPlusBeauVillage: boolean;
+  isVilleArtHistoire: boolean;
+}
+
 export interface TrackResponse {
   name: string | null;
   profile: TrackProfile;
@@ -42,6 +49,7 @@ export interface TrackResponse {
   geojson: Feature<LineString>;
   bbox: [number, number, number, number] | null;
   proposedDestinationName: string | null;
+  destinationInfo: DestinationInfo | null;
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
   seed: number | null;

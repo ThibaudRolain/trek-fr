@@ -64,6 +64,11 @@ public class UseCaseTests
             LastSeed = seed;
             return Task.FromResult<ProposedDestination?>(destination);
         }
+
+        public Task<IReadOnlyList<ProposedDestination>> GetTopCandidatesAsync(
+            Coordinate start, double targetDistanceMeters, Profile profile, int topN, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ProposedDestination>>(
+                destination is null ? [] : [destination]);
     }
 
     // ---- RouteAToB ----

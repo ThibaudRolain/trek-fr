@@ -26,4 +26,10 @@ public interface IDestinationProposer
         CancellationToken ct = default);
 }
 
-public sealed record ProposedDestination(string Name, Coordinate Location, int Population);
+public sealed record ProposedDestination(
+    string Name,
+    Coordinate Location,
+    int Population,
+    int? MonumentsHistoriques = null,
+    bool IsPlusBeauVillage = false,
+    bool IsVilleArtHistoire = false);

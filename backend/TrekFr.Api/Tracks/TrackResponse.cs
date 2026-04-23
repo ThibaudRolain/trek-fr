@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using TrekFr.Core.Abstractions;
 using TrekFr.Core.Domain;
 using TrekFr.Core.UseCases;
 
@@ -12,6 +13,7 @@ public sealed record TrackResponse(
     object Geojson,
     double[]? Bbox,
     string? ProposedDestinationName,
+    DestinationInfoDto? DestinationInfo,
     IReadOnlyList<StageDto>? Stages,
     IReadOnlyList<WarningDto>? Warnings,
     int? Seed)
@@ -19,7 +21,7 @@ public sealed record TrackResponse(
     public static TrackResponse From(
         Track track,
         TrackStats stats,
-        string? proposedDestinationName = null,
+        ProposedDestination? destination = null,
         IReadOnlyList<Stage>? stages = null,
         IReadOnlyList<WarningDto>? warnings = null,
         int? seed = null)
@@ -31,7 +33,8 @@ public sealed record TrackResponse(
             TrackStatsDto.From(stats),
             BuildLineStringFeature(track.Points, track.Name, profile),
             ComputeBbox(track.Points),
-            proposedDestinationName,
+            destination?.Name,
+            DestinationInfoDto.From(destination),
             stages?.Select(s => StageDto.From(s, profile)).ToList(),
             warnings,
             seed);
@@ -41,7 +44,7 @@ public sealed record TrackResponse(
     public static TrackResponse From(GeneratedTrack generated) =>
         From(generated.Track, generated.Stats, seed: generated.Seed);
     public static TrackResponse From(ProposedGeneratedTrack proposed) =>
-        From(proposed.Track, proposed.Stats, proposed.Destination.Name, seed: proposed.Seed);
+        From(proposed.Track, proposed.Stats, proposed.Destination, seed: proposed.Seed);
 
     internal static object BuildLineStringFeature(IReadOnlyList<Coordinate> points, string? name, string profile)
     {
@@ -123,6 +126,16 @@ public sealed record SleepSpotDto(
 {
     public static SleepSpotDto From(SleepSpot s) =>
         new(s.Name, s.Location.Latitude, s.Location.Longitude, s.Kind);
+}
+
+public sealed record DestinationInfoDto(
+    string Name,
+    int? MonumentsHistoriques,
+    bool IsPlusBeauVillage,
+    bool IsVilleArtHistoire)
+{
+    internal static DestinationInfoDto? From(ProposedDestination? dest) => dest is null ? null
+        : new(dest.Name, dest.MonumentsHistoriques, dest.IsPlusBeauVillage, dest.IsVilleArtHistoire);
 }
 
 /// <summary>

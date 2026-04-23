@@ -45,7 +45,10 @@ public sealed class CommunesDestinationProposer(CommuneDataset dataset) : IDesti
             new ProposedDestination(
                 picked.Name,
                 new Coordinate(picked.Lat, picked.Lon),
-                picked.Population));
+                picked.Population,
+                picked.MonumentsHistoriques,
+                picked.IsPlusBeauVillage,
+                picked.IsVilleArtHistoire));
     }
 
     public Task<IReadOnlyList<ProposedDestination>> GetTopCandidatesAsync(
@@ -63,7 +66,13 @@ public sealed class CommunesDestinationProposer(CommuneDataset dataset) : IDesti
             .Where(x => x.distance >= min && x.distance <= max)
             .OrderByDescending(x => x.commune.Score)
             .Take(topN)
-            .Select(x => new ProposedDestination(x.commune.Name, new Coordinate(x.commune.Lat, x.commune.Lon), x.commune.Population))
+            .Select(x => new ProposedDestination(
+                x.commune.Name,
+                new Coordinate(x.commune.Lat, x.commune.Lon),
+                x.commune.Population,
+                x.commune.MonumentsHistoriques,
+                x.commune.IsPlusBeauVillage,
+                x.commune.IsVilleArtHistoire))
             .ToList();
 
         return Task.FromResult(result);

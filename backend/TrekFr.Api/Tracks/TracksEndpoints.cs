@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
+using TrekFr.Core.Abstractions;
 using TrekFr.Core.Domain;
 using TrekFr.Core.UseCases;
 using TrekFr.Infrastructure.Communes;
@@ -122,7 +123,7 @@ public static class TracksEndpoints
 
             Track track;
             TrackStats stats;
-            string? proposedName = null;
+            ProposedDestination? proposedDestination = null;
 
             switch (request.Mode)
             {
@@ -136,7 +137,7 @@ public static class TracksEndpoints
                 case TrackGenerationMode.AToB:
                 {
                     var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
-                    (track, stats, proposedName) = (r.Track, r.Stats, r.Destination.Name);
+                    (track, stats, proposedDestination) = (r.Track, r.Stats, r.Destination);
                     break;
                 }
                 case TrackGenerationMode.RoundTrip:
@@ -156,7 +157,7 @@ public static class TracksEndpoints
                 var opts = new StageOptions(
                     MaxDistancePerDayMeters: request.StageDistanceKm!.Value * 1000d,
                     MaxElevationGainPerDay: request.StageElevationGain!.Value,
-                    ArrivalName: proposedName ?? "Arrivée");
+                    ArrivalName: proposedDestination?.Name ?? "Arrivée");
                 try
                 {
                     stages = await splitter.ExecuteAsync(track, opts, ct);
@@ -170,7 +171,7 @@ public static class TracksEndpoints
                 }
             }
 
-            return Results.Ok(TrackResponse.From(track, stats, proposedName, stages, warnings));
+            return Results.Ok(TrackResponse.From(track, stats, proposedDestination, stages, warnings));
         }
         catch (NoDestinationCandidateException ex)
         {
