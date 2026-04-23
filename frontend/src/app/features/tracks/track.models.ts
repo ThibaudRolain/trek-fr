@@ -35,6 +35,15 @@ export interface WarningDto {
   nearbyPlaceDistanceMeters: number | null;
 }
 
+export interface PoiOnRoute {
+  communeName: string;
+  monumentCount: number;
+  latitude: number;
+  longitude: number;
+  distanceFromStartMeters: number;
+  distanceFromTrackMeters: number;
+}
+
 export interface TrackResponse {
   name: string | null;
   profile: TrackProfile;
@@ -45,6 +54,7 @@ export interface TrackResponse {
   stages: StageDto[] | null;
   warnings: WarningDto[] | null;
   seed: number | null;
+  poisOnRoute: PoiOnRoute[] | null;
 }
 
 export interface LatLon {

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
+using TrekFr.Core.Abstractions;
 using TrekFr.Core.Domain;
 using TrekFr.Core.UseCases;
 using TrekFr.Infrastructure.Communes;
@@ -100,6 +101,8 @@ public static class TracksEndpoints
         ProposeDestination propose,
         SplitIntoStages splitter,
         CommuneDataset communes,
+        IMhPoiProvider mhPois,
+        ILogger<GenerateRoundTrip> logger,
         CancellationToken ct)
     {
         if (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180)
@@ -170,7 +173,21 @@ public static class TracksEndpoints
                 }
             }
 
-            return Results.Ok(TrackResponse.From(track, stats, proposedName, stages, warnings));
+            IReadOnlyList<PoiOnRouteDto>? pois = null;
+            try
+            {
+                var mhList = await mhPois.FindAlongTrackAsync(track.Points, ct);
+                if (mhList.Count > 0)
+                    pois = mhList.Select(PoiOnRouteDto.From).ToList();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "MH POI lookup failed — continuing without POIs");
+                warnings ??= [];
+                warnings.Add(new WarningDto("Enrichissement patrimoine indisponible."));
+            }
+
+            return Results.Ok(TrackResponse.From(track, stats, proposedName, stages, warnings, pois: pois));
         }
         catch (NoDestinationCandidateException ex)
         {

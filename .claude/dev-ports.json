@@ -1,4 +1,4 @@
 {
-  "_comment": "Ports dev de CE worktree. Le skill /restart le lit pour tuer/lancer les bons process sans interférer avec les autres worktrees. Backend: source de vérité = launchSettings.json (celui-ci n'est utile QUE pour le front).",
-  "front": 4200
+  "_comment": "Ports dev de CE worktree.",
+  "front": 4205
 }

@@ -18,7 +18,7 @@ import {
   StyleSpecification,
 } from 'maplibre-gl';
 import type { FeatureCollection, Feature, LineString, Point } from 'geojson';
-import type { LatLon, StageDto, TrackResponse } from '../tracks/track.models';
+import type { LatLon, PoiOnRoute, StageDto, TrackResponse } from '../tracks/track.models';
 
 const IGN_STYLE: StyleSpecification = {
   version: 8,
@@ -49,6 +49,9 @@ const STAGES_LAYER_ID = 'stages-line';
 const STAGE_ENDS_SOURCE_ID = 'stage-ends';
 const STAGE_ENDS_CIRCLE_LAYER_ID = 'stage-ends-circle';
 const STAGE_ENDS_LABEL_LAYER_ID = 'stage-ends-label';
+const POIS_SOURCE_ID = 'pois';
+const POIS_CIRCLE_LAYER_ID = 'pois-circle';
+const POIS_LABEL_LAYER_ID = 'pois-label';
 
 const STAGE_COLOR_EXPR = [
   'match',
@@ -154,6 +157,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     if (!track) {
       this.removeSingleTrackLayer();
       this.removeStageLayers();
+      this.removePoisLayers();
       return;
     }
 
@@ -164,6 +168,8 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.removeStageLayers();
       this.renderSingleTrack(track.geojson);
     }
+
+    this.renderPois(track.poisOnRoute ?? []);
 
     if (track.bbox) {
       const [minLon, minLat, maxLon, maxLat] = track.bbox;
@@ -271,6 +277,55 @@ export class MapComponent implements AfterViewInit, OnDestroy {
         },
       });
     }
+  }
+
+  private renderPois(pois: PoiOnRoute[]): void {
+    const map = this.map!;
+    const fc: FeatureCollection<Point> = {
+      type: 'FeatureCollection',
+      features: pois.map((p) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [p.longitude, p.latitude] },
+        properties: { label: String(p.monumentCount), name: p.communeName },
+      })),
+    };
+    const existing = map.getSource(POIS_SOURCE_ID) as GeoJSONSource | undefined;
+    if (existing) {
+      existing.setData(fc);
+      return;
+    }
+    map.addSource(POIS_SOURCE_ID, { type: 'geojson', data: fc });
+    map.addLayer({
+      id: POIS_CIRCLE_LAYER_ID,
+      type: 'circle',
+      source: POIS_SOURCE_ID,
+      paint: {
+        'circle-radius': 9,
+        'circle-color': '#d97706',
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#0f172a',
+        'circle-opacity': 0.9,
+      },
+    });
+    map.addLayer({
+      id: POIS_LABEL_LAYER_ID,
+      type: 'symbol',
+      source: POIS_SOURCE_ID,
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-size': 10,
+        'text-font': ['Noto Sans Bold'],
+        'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#fafaf9' },
+    });
+  }
+
+  private removePoisLayers(): void {
+    const map = this.map!;
+    if (map.getLayer(POIS_LABEL_LAYER_ID)) map.removeLayer(POIS_LABEL_LAYER_ID);
+    if (map.getLayer(POIS_CIRCLE_LAYER_ID)) map.removeLayer(POIS_CIRCLE_LAYER_ID);
+    if (map.getSource(POIS_SOURCE_ID)) map.removeSource(POIS_SOURCE_ID);
   }
 
   private removeSingleTrackLayer(): void {

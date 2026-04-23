@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(AngularDevCors, policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins("http://localhost:4200", "http://localhost:4205")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -79,6 +79,7 @@ builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherProvider>((sp, 
 
 builder.Services.AddSingleton<CommuneDataset>();
 builder.Services.AddSingleton<INearestCommuneFinder>(sp => sp.GetRequiredService<CommuneDataset>());
+builder.Services.AddSingleton<IMhPoiProvider, MhPoiProvider>();
 builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
 builder.Services.AddSingleton<IRefugeProvider, NullRefugeProvider>();
 builder.Services.AddSingleton<CommunesTownProvider>();
