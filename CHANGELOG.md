@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com). Dates au form
 
 ## 2026-04-23
 
+### Added — POI Mérimée le long du trace (feature/poi-on-route)
+
+Slice 1 POI on route : communes traversées avec monuments historiques (données Mérimée locales, zéro requête réseau). Marqueurs amber sur la carte + panneau "Patrimoine" collapsible dans la sidebar. Backend : `IMhPoiProvider` / `MhPoiProvider` (buffer 2 km, max 20), `PoiOnRouteDto` dans `TrackResponse`. Échec provider → `warnings[]`, jamais 400.
+
+**Doc détaillée** : [`docs/merges/2026-04-23-poi-on-route.md`](docs/merges/2026-04-23-poi-on-route.md) • **Merge** : `103e900`
+
 ### Added — Détails ville d'arrivée (feature/arrival-city)
 
 Exposition des champs patrimoniaux de `communes-fr.json` (MH, PBV, VAH) dans la réponse `/tracks/generate` via un nouveau `destinationInfo` DTO. Nouveau `ArrivalCityPanelComponent` Angular : badges "Plus Beau Village", "Ville d'art et d'histoire", compteur MH + lien Wikipedia — visible en mode A→B proposé par l'app.
