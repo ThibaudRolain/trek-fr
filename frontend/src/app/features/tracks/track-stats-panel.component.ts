@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import type { StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
+import type { PoiOnRoute, StageDto, TrackResponse, TrackStats, WarningDto } from './track.models';
 import { SavedTracksService } from './saved-tracks.service';
 
 @Component({
@@ -141,6 +141,36 @@ import { SavedTracksService } from './saved-tracks.service';
             </ul>
           </div>
         }
+        @if (pois(); as poiList) {
+          <div class="mt-3 border-t border-slate-800 pt-2">
+            <button
+              type="button"
+              class="mb-1 flex w-full items-center justify-between text-xs font-medium text-slate-300 hover:text-slate-100"
+              (click)="togglePois()"
+            >
+              <span>Patrimoine ({{ poiList.length }})</span>
+              <span class="text-slate-500">{{ poisOpen() ? '▲' : '▼' }}</span>
+            </button>
+            @if (poisOpen()) {
+              <p class="mb-2 text-[10px] leading-snug text-slate-500">
+                Communes avec des Monuments Historiques à moins de 2 km de ta trace.
+              </p>
+              <ul class="flex flex-col gap-1">
+                @for (p of poiList; track p.communeName) {
+                  <li class="flex items-center justify-between rounded border border-slate-800 bg-slate-900/60 px-2 py-1 text-xs">
+                    <span class="flex items-center gap-1.5">
+                      <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-600 text-[9px] font-bold text-slate-950">
+                        {{ p.monumentCount }}
+                      </span>
+                      <span class="text-slate-100">{{ p.communeName }}</span>
+                    </span>
+                    <span class="font-mono text-slate-400">km {{ formatKmFromMeters(p.distanceFromStartMeters) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
         <button
           type="button"
           (click)="saveTrack(t)"
@@ -164,6 +194,11 @@ export class TrackStatsPanelComponent {
   readonly justSaved = signal(false);
 
   readonly stages = computed(() => this.track()?.stages ?? null);
+  readonly pois = computed(() => {
+    const p = this.track()?.poisOnRoute;
+    return p && p.length > 0 ? p : null;
+  });
+  readonly poisOpen = signal(true);
 
   formatKm(stats: TrackStats): string {
     return (stats.distanceMeters / 1000).toFixed(2);
@@ -212,6 +247,10 @@ export class TrackStatsPanelComponent {
 
   formatKmFromMeters(meters: number): string {
     return (meters / 1000).toFixed(1);
+  }
+
+  togglePois(): void {
+    this.poisOpen.update((v) => !v);
   }
 
   saveTrack(track: TrackResponse): void {

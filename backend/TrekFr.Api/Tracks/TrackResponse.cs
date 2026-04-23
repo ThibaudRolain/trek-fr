@@ -16,7 +16,8 @@ public sealed record TrackResponse(
     DestinationInfoDto? DestinationInfo,
     IReadOnlyList<StageDto>? Stages,
     IReadOnlyList<WarningDto>? Warnings,
-    int? Seed)
+    int? Seed,
+    IReadOnlyList<PoiOnRouteDto>? PoisOnRoute)
 {
     public static TrackResponse From(
         Track track,
@@ -24,7 +25,8 @@ public sealed record TrackResponse(
         ProposedDestination? destination = null,
         IReadOnlyList<Stage>? stages = null,
         IReadOnlyList<WarningDto>? warnings = null,
-        int? seed = null)
+        int? seed = null,
+        IReadOnlyList<PoiOnRouteDto>? pois = null)
     {
         var profile = track.Profile.ToString().ToLowerInvariant();
         return new TrackResponse(
@@ -37,14 +39,15 @@ public sealed record TrackResponse(
             DestinationInfoDto.From(destination),
             stages?.Select(s => StageDto.From(s, profile)).ToList(),
             warnings,
-            seed);
+            seed,
+            pois);
     }
 
     public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
-    public static TrackResponse From(GeneratedTrack generated) =>
-        From(generated.Track, generated.Stats, seed: generated.Seed);
-    public static TrackResponse From(ProposedGeneratedTrack proposed) =>
-        From(proposed.Track, proposed.Stats, proposed.Destination, seed: proposed.Seed);
+    public static TrackResponse From(GeneratedTrack generated, IReadOnlyList<PoiOnRouteDto>? pois = null) =>
+        From(generated.Track, generated.Stats, seed: generated.Seed, pois: pois);
+    public static TrackResponse From(ProposedGeneratedTrack proposed, IReadOnlyList<PoiOnRouteDto>? pois = null) =>
+        From(proposed.Track, proposed.Stats, proposed.Destination, seed: proposed.Seed, pois: pois);
 
     internal static object BuildLineStringFeature(IReadOnlyList<Coordinate> points, string? name, string profile)
     {
@@ -148,3 +151,24 @@ public sealed record WarningDto(
     string Message,
     string? NearbyPlace = null,
     double? NearbyPlaceDistanceMeters = null);
+
+/// <summary>
+/// POI patrimonial le long de la trace : commune ayant des monuments historiques
+/// (données Mérimée, décomptées dans communes-fr.json) à moins de 2 km de la trace.
+/// </summary>
+public sealed record PoiOnRouteDto(
+    string CommuneName,
+    int MonumentCount,
+    double Latitude,
+    double Longitude,
+    double DistanceFromStartMeters,
+    double DistanceFromTrackMeters)
+{
+    public static PoiOnRouteDto From(TrekFr.Core.Domain.MhPoi p) => new(
+        p.CommuneName,
+        p.MonumentCount,
+        p.Location.Latitude,
+        p.Location.Longitude,
+        p.DistanceFromStartMeters,
+        p.DistanceFromTrackMeters);
+}

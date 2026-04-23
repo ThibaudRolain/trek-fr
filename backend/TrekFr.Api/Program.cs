@@ -79,6 +79,7 @@ builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoWeatherProvider>((sp, 
 
 builder.Services.AddSingleton<CommuneDataset>();
 builder.Services.AddSingleton<INearestCommuneFinder>(sp => sp.GetRequiredService<CommuneDataset>());
+builder.Services.AddSingleton<IMhPoiProvider, MhPoiProvider>();
 builder.Services.AddSingleton<IDestinationProposer, CommunesDestinationProposer>();
 builder.Services.AddSingleton<IRefugeProvider, NullRefugeProvider>();
 builder.Services.AddSingleton<CommunesTownProvider>();

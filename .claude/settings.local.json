@@ -22,7 +22,17 @@
       "Read(//tmp/**)",
       "Bash(sed 's/5179/5479/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)",
       "Bash(sed 's/5179/5579/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)",
-      "Bash(sed 's/5179/5679/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)"
+      "Bash(sed 's/5179/5679/g' /c/Users/bertr/dev/trek-fr/backend/TrekFr.Api/Properties/launchSettings.json)",
+      "Bash(xargs grep *)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --noEmit -p tsconfig.app.json)",
+      "Bash(node_modules/.bin/ng build *)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -r -I{} powershell.exe -Command \"Stop-Process -Id {} -Force -ErrorAction SilentlyContinue\")",
+      "Bash(node_modules/.bin/ng serve *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); pois=d.get\\('poisOnRoute'\\) or []; print\\(f'poisOnRoute: {len\\(pois\\)} entrées'\\); [print\\(f'  - {p[\\\\\"communeName\\\\\"]} \\({p[\\\\\"monumentCount\\\\\"]} MH\\) km {round\\(p[\\\\\"distanceFromStartMeters\\\\\"]/1000,1\\)}'\\) for p in pois[:5]]\")",
+      "Bash(ASPNETCORE_ENVIRONMENT=Development dotnet run --project TrekFr.Api --launch-profile http)"
     ]
   }
 }
