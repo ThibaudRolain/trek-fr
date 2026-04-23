@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TrekFr.Core.Abstractions;
@@ -8,9 +10,55 @@ namespace TrekFr.Core.UseCases;
 
 public sealed class GenerateRoundTrip(IRoutingProvider router)
 {
-    // Retries pour le filtre D+ : chaque seed génère un dénivelé différent.
+    private const int VariantCount = 3;
     private const int MaxElevationFilterAttempts = 5;
 
+    /// <summary>
+    /// Génère VariantCount variantes, triées par proximité à targetDistanceMeters.
+    /// Appelé sur la première génération (seed == null). Apprend le ratio d'overshoot ORS
+    /// sur le premier appel et l'applique aux suivants pour compenser le biais local.
+    /// Max VariantCount appels ORS + 300 ms entre chaque.
+    /// </summary>
+    public async Task<IReadOnlyList<GeneratedTrack>> GenerateVariantsAsync(
+        Coordinate start,
+        double targetDistanceMeters,
+        Profile profile,
+        CancellationToken ct = default)
+    {
+        var baseSeed = Random.Shared.Next();
+        var results = new List<GeneratedTrack>(VariantCount);
+
+        // Premier appel avec la target brute pour mesurer l'overshoot local
+        var track0 = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
+        var stats0 = TrackStatsCalculator.Compute(track0);
+        results.Add(new GeneratedTrack(track0, stats0, baseSeed));
+
+        var deviation0 = Math.Abs(stats0.DistanceMeters - targetDistanceMeters) / targetDistanceMeters;
+        // Si ORS overshoot : cible corrigée = target²/actual (annule le ratio d'overshoot)
+        var effectiveTarget = deviation0 > 0.15
+            ? targetDistanceMeters * targetDistanceMeters / stats0.DistanceMeters
+            : targetDistanceMeters;
+
+        // Variantes suivantes avec la target corrigée et des seeds différents
+        for (int i = 1; i < VariantCount; i++)
+        {
+            await Task.Delay(300, ct);
+            var seed = baseSeed + i;
+            var track = await router.GenerateRoundTripAsync(start, effectiveTarget, profile, seed, ct);
+            var stats = TrackStatsCalculator.Compute(track);
+            results.Add(new GeneratedTrack(track, stats, seed));
+        }
+
+        return results
+            .OrderBy(r => Math.Abs(r.Stats.DistanceMeters - targetDistanceMeters))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Génère une trace unique pour un seed explicite (ex : "Autre variante" depuis le front,
+    /// ou rejeu d'une trace sauvegardée). Applique la correction d'overshoot si nécessaire
+    /// sauf si le seed est explicitement fourni par l'utilisateur (on respecte ce qu'il demande).
+    /// </summary>
     public async Task<GeneratedTrack> ExecuteAsync(
         Coordinate start,
         double targetDistanceMeters,
@@ -21,33 +69,12 @@ public sealed class GenerateRoundTrip(IRoutingProvider router)
     {
         var baseSeed = seed ?? Random.Shared.Next();
 
-        // Sans filtre D+ : appel initial avec la target demandée.
-        // Si ORS overshoot de >15 %, une correction proportionnelle (target²/actual) compense
-        // le biais du réseau local — si le ratio d'overshoot est constant, la formule donne
-        // exactement la bonne target au 2e appel. Max 2 appels ORS, 300 ms entre les deux.
-        // Seed explicite (bouton "Autre variante") : on ne corrige pas, on respecte le seed.
         if (elevationFilter is null || !elevationFilter.IsActive)
         {
-            var track1 = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
-            var stats1 = TrackStatsCalculator.Compute(track1);
-            var deviation1 = Math.Abs(stats1.DistanceMeters - targetDistanceMeters) / targetDistanceMeters;
-
-            if (deviation1 <= 0.15 || seed is not null)
-                return new GeneratedTrack(track1, stats1, baseSeed);
-
-            // Correction : target² / actual compense le ratio d'overshoot
-            var correctedTarget = targetDistanceMeters * targetDistanceMeters / stats1.DistanceMeters;
-            await Task.Delay(300, ct);
-            var track2 = await router.GenerateRoundTripAsync(start, correctedTarget, profile, baseSeed, ct);
-            var stats2 = TrackStatsCalculator.Compute(track2);
-
-            return Math.Abs(stats2.DistanceMeters - targetDistanceMeters) < Math.Abs(stats1.DistanceMeters - targetDistanceMeters)
-                ? new GeneratedTrack(track2, stats2, baseSeed)
-                : new GeneratedTrack(track1, stats1, baseSeed);
+            var track = await router.GenerateRoundTripAsync(start, targetDistanceMeters, profile, baseSeed, ct);
+            return new GeneratedTrack(track, TrackStatsCalculator.Compute(track), baseSeed);
         }
 
-        // Avec filtre D+ : on essaie plusieurs seeds pour trouver une variante dans la
-        // plage D+ demandée. Délai entre les appels pour ne pas saturer le rate limit ORS.
         for (int i = 0; i < MaxElevationFilterAttempts; i++)
         {
             if (i > 0) await Task.Delay(500, ct);

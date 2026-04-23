@@ -126,6 +126,7 @@ public static class TracksEndpoints
             Track track;
             TrackStats stats;
             ProposedDestination? proposedDestination = null;
+            IReadOnlyList<TrackVariantDto>? variants = null;
 
             switch (request.Mode)
             {
@@ -140,6 +141,17 @@ public static class TracksEndpoints
                 {
                     var r = await propose.ExecuteAsync(start, request.DistanceKm * 1000d, request.Profile, request.Seed, filter, ct);
                     (track, stats, proposedDestination) = (r.Track, r.Stats, r.Destination);
+                    break;
+                }
+                case TrackGenerationMode.RoundTrip when request.Seed is null && (filter is null || !filter.IsActive):
+                {
+                    // Première génération sans seed ni filtre D+ : on génère plusieurs variantes
+                    // et on expose toutes au front pour permettre le cycle local (sans appel ORS).
+                    var all = await roundTrip.GenerateVariantsAsync(start, request.DistanceKm * 1000d, request.Profile, ct);
+                    var best = all[0];
+                    (track, stats) = (best.Track, best.Stats);
+                    var profile = track.Profile.ToString().ToLowerInvariant();
+                    variants = all.Select(v => TrackVariantDto.From(v, profile)).ToList();
                     break;
                 }
                 case TrackGenerationMode.RoundTrip:
@@ -187,7 +199,7 @@ public static class TracksEndpoints
                 warnings.Add(new WarningDto("Enrichissement patrimoine indisponible."));
             }
 
-            return Results.Ok(TrackResponse.From(track, stats, proposedDestination, stages, warnings, pois: pois));
+            return Results.Ok(TrackResponse.From(track, stats, proposedDestination, stages, warnings, pois: pois, variants: variants));
         }
         catch (NoDestinationCandidateException ex)
         {

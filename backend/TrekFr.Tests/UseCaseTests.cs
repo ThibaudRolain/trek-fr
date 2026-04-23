@@ -127,6 +127,49 @@ public class UseCaseTests
         Assert.Equal(0d, result.Stats.ElevationGainMeters);
     }
 
+    // ---- GenerateVariantsAsync ----
+
+    [Fact]
+    public async Task GenerateVariantsAsync_returns_three_variants_with_distinct_seeds()
+    {
+        var router = new FakeRouter();
+        var useCase = new GenerateRoundTrip(router);
+
+        var variants = await useCase.GenerateVariantsAsync(
+            new Coordinate(48.85, 2.35), 20_000d, Profile.Foot);
+
+        Assert.Equal(3, variants.Count);
+        Assert.Equal(3, variants.Select(v => v.Seed).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task GenerateVariantsAsync_sorted_by_proximity_to_target()
+    {
+        var callIndex = 0;
+        // call 0 → 30 km (50 % overshoot), calls 1–2 → 18 km and 22 km
+        var distances = new[] { 30_000d, 18_000d, 22_000d };
+        var router = new FakeRouter
+        {
+            RoundTripTrack = () =>
+            {
+                var d = distances[Math.Min(callIndex, distances.Length - 1)];
+                callIndex++;
+                return TestTracks.OutAndBack(new Coordinate(48.85, 2.35), d, Profile.Foot);
+            },
+        };
+        var useCase = new GenerateRoundTrip(router);
+        const double target = 20_000d;
+
+        var variants = await useCase.GenerateVariantsAsync(
+            new Coordinate(48.85, 2.35), target, Profile.Foot);
+
+        Assert.Equal(3, variants.Count);
+        Assert.True(
+            Math.Abs(variants[0].Stats.DistanceMeters - target) <=
+            Math.Abs(variants[2].Stats.DistanceMeters - target),
+            "First variant must be at least as close to target as the last variant.");
+    }
+
     // ---- ProposeDestination ----
 
     [Fact]

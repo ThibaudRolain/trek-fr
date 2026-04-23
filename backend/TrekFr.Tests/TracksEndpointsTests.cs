@@ -71,6 +71,25 @@ public class TracksEndpointsTests : IClassFixture<TracksEndpointsTests.Fixture>
         Assert.Equal("foot", doc.RootElement.GetProperty("profile").GetString());
         Assert.True(doc.RootElement.GetProperty("stats").GetProperty("distanceMeters").GetDouble() > 0);
         Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("proposedDestinationName").ValueKind);
+        Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("variants").ValueKind);
+    }
+
+    [Fact]
+    public async Task Generate_roundTrip_without_seed_returns_variants_array_of_three()
+    {
+        var response = await _fx.Client.PostAsJsonAsync("/tracks/generate", new
+        {
+            latitude = 48.85, longitude = 2.35, distanceKm = 10, mode = "roundTrip",
+            // seed absent → declenche GenerateVariantsAsync
+        });
+        response.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var variants = doc.RootElement.GetProperty("variants");
+        Assert.Equal(JsonValueKind.Array, variants.ValueKind);
+        Assert.Equal(3, variants.GetArrayLength());
+        var first = variants[0];
+        Assert.Equal(JsonValueKind.Object, first.GetProperty("geojson").ValueKind);
+        Assert.True(first.GetProperty("stats").GetProperty("distanceMeters").GetDouble() > 0);
     }
 
     [Fact]

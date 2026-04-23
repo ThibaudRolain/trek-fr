@@ -17,7 +17,8 @@ public sealed record TrackResponse(
     IReadOnlyList<StageDto>? Stages,
     IReadOnlyList<WarningDto>? Warnings,
     int? Seed,
-    IReadOnlyList<PoiOnRouteDto>? PoisOnRoute)
+    IReadOnlyList<PoiOnRouteDto>? PoisOnRoute,
+    IReadOnlyList<TrackVariantDto>? Variants = null)
 {
     public static TrackResponse From(
         Track track,
@@ -26,7 +27,8 @@ public sealed record TrackResponse(
         IReadOnlyList<Stage>? stages = null,
         IReadOnlyList<WarningDto>? warnings = null,
         int? seed = null,
-        IReadOnlyList<PoiOnRouteDto>? pois = null)
+        IReadOnlyList<PoiOnRouteDto>? pois = null,
+        IReadOnlyList<TrackVariantDto>? variants = null)
     {
         var profile = track.Profile.ToString().ToLowerInvariant();
         return new TrackResponse(
@@ -40,7 +42,8 @@ public sealed record TrackResponse(
             stages?.Select(s => StageDto.From(s, profile)).ToList(),
             warnings,
             seed,
-            pois);
+            pois,
+            variants);
     }
 
     public static TrackResponse From(ImportedTrack imported) => From(imported.Track, imported.Stats);
@@ -171,4 +174,14 @@ public sealed record PoiOnRouteDto(
         p.Location.Longitude,
         p.DistanceFromStartMeters,
         p.DistanceFromTrackMeters);
+}
+
+public sealed record TrackVariantDto(object Geojson, double[]? Bbox, TrackStatsDto Stats, int? Seed)
+{
+    internal static TrackVariantDto From(GeneratedTrack g, string profile)
+    {
+        var geojson = TrackResponse.BuildLineStringFeature(g.Track.Points, g.Track.Name, profile);
+        var bbox = TrackResponse.ComputeBbox(g.Track.Points);
+        return new(geojson, bbox, TrackStatsDto.From(g.Stats), g.Seed);
+    }
 }

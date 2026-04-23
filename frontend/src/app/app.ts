@@ -4,7 +4,6 @@ import { TrackGenerateComponent } from './features/tracks/track-generate.compone
 import { TrackStatsPanelComponent } from './features/tracks/track-stats-panel.component';
 import { TrackWeatherPanelComponent } from './features/tracks/track-weather-panel.component';
 import { SavedTracksPanelComponent } from './features/tracks/saved-tracks-panel.component';
-import { ArrivalCityPanelComponent } from './features/tracks/arrival-city-panel.component';
 import { TrackService } from './features/tracks/track.service';
 import type {
   LatLon,
@@ -21,7 +20,6 @@ import type {
     MapComponent,
     TrackGenerateComponent,
     TrackStatsPanelComponent,
-    ArrivalCityPanelComponent,
     TrackWeatherPanelComponent,
     SavedTracksPanelComponent,
   ],

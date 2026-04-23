@@ -1,7 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TrackService } from './track.service';
-import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.models';
+import type { LatLon, TrackMode, TrackProfile, TrackResponse, TrackVariantDto } from './track.models';
 
 @Component({
   selector: 'app-track-generate',
@@ -211,11 +211,11 @@ import type { LatLon, TrackMode, TrackProfile, TrackResponse } from './track.mod
       } @else if (canProposeAnotherVariant()) {
         <button
           type="button"
-          (click)="submit($event)"
+          (click)="nextVariant()"
           [disabled]="loading()"
           class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:text-slate-500"
         >
-          Autre variante
+          Variante {{ variantIndex() + 1 }}/{{ storedVariants().length }} →
         </button>
       }
 
@@ -246,6 +246,9 @@ export class TrackGenerateComponent {
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly storedVariants = signal<TrackVariantDto[]>([]);
+  readonly variantIndex = signal(0);
+  private storedBaseResponse: TrackResponse | null = null;
 
   readonly canSubmit = computed(() => {
     if (this.loading() || this.startPoint() === null) return false;
@@ -259,11 +262,12 @@ export class TrackGenerateComponent {
     this.track()?.proposedDestinationName != null
   );
 
-  /** Round-trip ou A→B explicite déjà généré → "Autre variante" (nouveau seed). */
+  /** Round-trip déjà généré → peut cycler entre les variantes pré-chargées. */
   readonly canProposeAnotherVariant = computed(() =>
     this.track() !== null &&
     !this.canProposeAnother() &&
-    this.mode() === 'roundTrip'
+    this.mode() === 'roundTrip' &&
+    this.storedVariants().length > 1
   );
 
   /** Distance cible ignorée en A→B explicite (route déterministe) — on cache le champ. */
@@ -309,14 +313,15 @@ export class TrackGenerateComponent {
 
     this.error.set(null);
     this.loading.set(true);
+    this.storedVariants.set([]);
+    this.variantIndex.set(0);
+    this.storedBaseResponse = null;
     this.service
       .generate({
         latitude: start.lat,
         longitude: start.lon,
         distanceKm: this.distanceKm,
         profile: this.profile,
-        // seed toujours undefined ici ; le backend en génère un et le renvoie,
-        // l'utilisateur peut "Régénérer cette variante" plus tard depuis une trace sauvée.
         seed: undefined,
         mode,
         endLatitude: mode === 'aToB' && end ? end.lat : undefined,
@@ -330,6 +335,11 @@ export class TrackGenerateComponent {
       .subscribe({
         next: (res) => {
           this.loading.set(false);
+          if (res.variants && res.variants.length > 1) {
+            this.storedVariants.set(res.variants);
+            this.variantIndex.set(0);
+            this.storedBaseResponse = res;
+          }
           this.generated.emit(res);
         },
         error: (err) => {
@@ -338,5 +348,15 @@ export class TrackGenerateComponent {
           this.error.set(detail ?? 'Échec de la génération.');
         },
       });
+  }
+
+  nextVariant(): void {
+    const variants = this.storedVariants();
+    const base = this.storedBaseResponse;
+    if (variants.length < 2 || !base) return;
+    const next = (this.variantIndex() + 1) % variants.length;
+    this.variantIndex.set(next);
+    const v = variants[next];
+    this.generated.emit({ ...base, geojson: v.geojson, bbox: v.bbox, stats: v.stats, seed: v.seed, variants: null });
   }
 }

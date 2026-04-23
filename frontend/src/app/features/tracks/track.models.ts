@@ -51,6 +51,13 @@ export interface PoiOnRoute {
   distanceFromTrackMeters: number;
 }
 
+export interface TrackVariantDto {
+  geojson: Feature<LineString>;
+  bbox: [number, number, number, number] | null;
+  stats: TrackStats;
+  seed: number | null;
+}
+
 export interface TrackResponse {
   name: string | null;
   profile: TrackProfile;
@@ -63,6 +70,7 @@ export interface TrackResponse {
   warnings: WarningDto[] | null;
   seed: number | null;
   poisOnRoute: PoiOnRoute[] | null;
+  variants: TrackVariantDto[] | null;
 }
 
 export interface LatLon {
